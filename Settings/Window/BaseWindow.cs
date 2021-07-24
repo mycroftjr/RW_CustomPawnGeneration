@@ -35,7 +35,7 @@ namespace RW_CustomPawnGeneration
 
 			if (gender != null)
 			{
-				state = new Settings.State(gender.Value, race);
+				state = new Settings.State(race, gender.Value);
 				label += "; " + gender.Value.ToString();
 			}
 			else

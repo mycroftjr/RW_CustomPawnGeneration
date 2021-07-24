@@ -31,6 +31,7 @@ namespace RW_CustomPawnGeneration
 		public const string OVERRIDE_TRAITS = "Allow Forced/Blocked Traits";
 
 		public const string OverrideTraits = "OverrideTraits";
+		public const string Trait = "Trait";
 
 		public string Search = "";
 
@@ -77,7 +78,7 @@ namespace RW_CustomPawnGeneration
 							try
 							{
 								foreach (TraitDegreeData data in def.degreeDatas)
-									state.Remove($"Trait|{def.defName}|{data.degree}");
+									state.Remove($"{Trait}|{def.defName}|{data.degree}");
 							}
 							catch { }
 					},
@@ -102,7 +103,7 @@ namespace RW_CustomPawnGeneration
 							ComboWindow.Entry(
 								gui,
 								state,
-								$"Trait|{def.defName}|{data.degree}",
+								$"{Trait}|{def.defName}|{data.degree}",
 								label,
 								data.description ?? def.description,
 								COMBO_TRAITS

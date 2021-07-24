@@ -7,22 +7,22 @@ namespace RW_CustomPawnGeneration
 	{
 		public struct State
 		{
+			public static State GLOBAL = new State(null);
+
 			public bool global;
 			public string prefix;
 
-			public State(ThingDef race)
+			public State(ThingDef race, Gender gender = Gender.Male)
 			{
+				int i = (int)gender;
 				global = race == null;
-
-				int i = (int)Gender.Male;
-					
 				prefix =
 					race != null ?
 						$"{i}|{race.defName}|" :
 						$"{i}||";
 			}
 
-			public State(Gender gender, ThingDef race = null)
+			/*public State(Gender gender, ThingDef race = null)
 			{
 				global = race == null;
 				int i = (int)gender;
@@ -31,13 +31,13 @@ namespace RW_CustomPawnGeneration
 					race != null ?
 						$"{i}|{race.defName}|" :
 						$"{i}||";
-			}
+			}*/
 
 			public int Get(string key)
 			{
 				string _key = prefix + key;
 
-				if (IntStates.ContainsKey(_key))
+				if (IntStates != null && IntStates.ContainsKey(_key))
 					return IntStates[_key];
 
 				return IntDefaults.ContainsKey(key) ? IntDefaults[key] : 0;

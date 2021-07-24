@@ -50,6 +50,12 @@ namespace RW_CustomPawnGeneration
 				return value == 2;
 		}
 
+		public static bool BoolMale(Pawn pawn, string key)
+		{
+			GetStateMale(pawn, out State global, out State state);
+			return Bool(global, state, key);
+		}
+
 		public static bool Bool(State global, State state, string key)
 		{
 			int value = state.Get(key);
@@ -73,17 +79,30 @@ namespace RW_CustomPawnGeneration
 			return Int(global, state, key, isGlobal) == 1;
 		}
 
-		public static void GetState(Pawn pawn, out State global, out State state)
+		/// <summary>
+		/// Configuration state representing the male settings.
+		/// If `SeparateGender` is not enabled,
+		/// female configuration points to the male configuration.
+		/// </summary>
+		public static void GetStateMale(Pawn pawn, out State global, out State state)
 		{
 			global = new State(null);
 			state = new State(pawn.kindDef.race);
+		}
+
+		/// <summary>
+		/// Automatically points to the female configuration state if `SeparateGender` is enabled.
+		/// </summary>
+		public static void GetState(Pawn pawn, out State global, out State state)
+		{
+			GetStateMale(pawn, out global, out state);
 
 			if (pawn.RaceProps.hasGenders &&
 				pawn.gender == Gender.Female &&
 				Bool(global, state, GenderWindow.SeparateGender))
 			{
-				global = new State(pawn.gender);
-				state = new State(pawn.gender, pawn.kindDef.race);
+				global = new State(null, pawn.gender);
+				state = new State(pawn.kindDef.race, pawn.gender);
 			}
 		}
 	}

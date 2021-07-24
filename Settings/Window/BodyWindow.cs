@@ -35,7 +35,7 @@ namespace RW_CustomPawnGeneration
 
 			if (state.GBool(FilterBody))
 				foreach (BodyTypeDef def in DefDatabase<BodyTypeDef>.AllDefs)
-					Tools.Bool(gui, state, def.defName, def.defName);
+					Tools.Bool(gui, state, $"{FilterBody}|{def.defName}", def.defName);
 		}
 	}
 }
