@@ -14,7 +14,10 @@ namespace RW_CustomPawnGeneration
 			if (IntStates == null)
 				IntStates = new Dictionary<string, int>();
 
-			Listing_Standard gui = new Listing_Standard();
+			Listing_Standard gui = new Listing_Standard
+			{
+				maxOneColumn = true
+			};
 
 			gui.Begin(inRect);
 			{

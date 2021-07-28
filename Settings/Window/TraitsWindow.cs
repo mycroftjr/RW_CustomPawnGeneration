@@ -1,4 +1,6 @@
 ﻿using RimWorld;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Verse;
 
@@ -88,11 +90,12 @@ namespace RW_CustomPawnGeneration
 
 		public override void Draw_Inside(Rect inRect, Listing_Standard gui)
 		{
-
 			if (!state.GBool(OverrideTraits))
 				return;
 
-			foreach (TraitDef def in DefDatabase<TraitDef>.AllDefs)
+			IEnumerable<TraitDef> defs = DefDatabase<TraitDef>.AllDefs;
+
+			foreach (TraitDef def in defs)
 				try
 				{
 					foreach (TraitDegreeData data in def.degreeDatas)

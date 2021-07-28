@@ -14,8 +14,8 @@ namespace RW_CustomPawnGeneration
 		public string description = "";
 		public string[] texts = new string[0];
 
-		public Vector2 ScrollVector = Vector2.zero;
-		public Rect ScrollRect = Rect.zero;
+		public Vector2 scrollVector = Vector2.zero;
+		public float scrollHeight = 0f;
 
 		public override Vector2 InitialSize
 		{
@@ -42,7 +42,10 @@ namespace RW_CustomPawnGeneration
 
 		public override void DoWindowContents(Rect inRect)
 		{
-			Listing_Standard gui = new Listing_Standard();
+			Listing_Standard gui = new Listing_Standard
+			{
+				maxOneColumn = true
+			};
 
 			gui.Begin(inRect);
 			{
@@ -58,27 +61,38 @@ namespace RW_CustomPawnGeneration
 				Text.Anchor = TextAnchor.UpperLeft;
 				Text.Font = GameFont.Small;
 
-				float height = gui.CurHeight + 20f;
+				gui.Gap(20f);
 
-				gui.BeginScrollView(
+				float height = gui.CurHeight;
+
+				Widgets.BeginScrollView(
 					new Rect(
 						0f,
 						height,
 						gui.ColumnWidth,
 						inRect.height - height - 40f
 					),
-					ref ScrollVector,
-					ref ScrollRect
+					ref scrollVector,
+					new Rect(
+						0f,
+						height,
+						gui.ColumnWidth - 16f,
+						scrollHeight
+					)
 				);
 				{
 					for (int i = 0; i < texts.Length; i++)
+					{
 						if (gui.ButtonText(texts[i]))
 						{
 							callback?.Invoke(i);
 							Close();
 						}
+					}
+
+					scrollHeight = gui.CurHeight - height;
 				}
-				gui.EndScrollView(ref ScrollRect);
+				Widgets.EndScrollView();
 			}
 			gui.End();
 		}

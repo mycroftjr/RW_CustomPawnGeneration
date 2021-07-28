@@ -18,7 +18,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>Build\v1.2\Assemblies\</OutputPath>
+    <OutputPath>Build\v1.3\Assemblies\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -34,9 +34,8 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="0Harmony, Version=1.2.0.1, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\C-Sharp\0Harmony\2.0.0.9\Release\net472\0Harmony.dll</HintPath>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp, Version=1.0.7213.22423, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>

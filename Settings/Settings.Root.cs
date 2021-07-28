@@ -26,7 +26,7 @@ namespace RW_CustomPawnGeneration
 		//public static bool AdvancedMode = false;
 
 		public static Vector2 scrollVector = Vector2.zero;
-		public static Rect scrollRect = Rect.zero;
+		public static float scrollHeight = 0f;
 
 		public static List<ThingDef> races = null;
 
@@ -69,7 +69,7 @@ namespace RW_CustomPawnGeneration
 				return;
 			}
 
-			gui.BeginScrollView(
+			Widgets.BeginScrollView(
 				new Rect(
 					0f,
 					height,
@@ -77,7 +77,13 @@ namespace RW_CustomPawnGeneration
 					inRect.height - height - 40f
 				),
 				ref scrollVector,
-				ref scrollRect
+				new Rect(
+					0f,
+					height,
+					width - 16f,
+					//inRect.height + height - 40f + races.Count * 24f
+					scrollHeight
+				)
 			);
 			{
 				Text.Anchor = TextAnchor.MiddleRight;
@@ -95,6 +101,7 @@ namespace RW_CustomPawnGeneration
 				}
 				Text.Anchor = TextAnchor.UpperLeft;
 				gui.NewColumn();
+				gui.Gap(height);
 				gui.ColumnWidth = width * 0.1f;
 				{
 					foreach (ThingDef race in races)
@@ -102,6 +109,7 @@ namespace RW_CustomPawnGeneration
 							new EditWindow(race);
 				}
 				gui.NewColumn();
+				gui.Gap(height);
 				{
 					foreach (ThingDef race in races)
 						if (race == null)
@@ -110,6 +118,7 @@ namespace RW_CustomPawnGeneration
 							new CopyWindow(race);
 				}
 				gui.NewColumn();
+				gui.Gap(height);
 				{
 					foreach (ThingDef race in races)
 						if (gui.ButtonText(RESET))
@@ -124,8 +133,9 @@ namespace RW_CustomPawnGeneration
 								NO
 							));
 				}
+				scrollHeight = gui.CurHeight - height;
 			}
-			gui.EndScrollView(ref scrollRect);
+			Widgets.EndScrollView();
 		}
 	}
 }

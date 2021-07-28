@@ -6,45 +6,7 @@ using Verse;
 
 namespace RW_CustomPawnGeneration
 {
-	/*[HarmonyPatch(typeof(PawnGenerator), "TryGenerateNewPawnInternal")]
-	public static class Patch_PawnGenerator_TryGenerateNewPawnInternal
-	{
-		[HarmonyPostfix]
-		public static void Patch(ref Pawn __result,
-								 ref PawnGenerationRequest request,
-								 ref string error,
-								 bool ignoreScenarioRequirements,
-								 bool ignoreValidator)
-		{
-			if (__result == null)
-				return;
-
-			Settings.GetState(__result, out Settings.State global, out Settings.State state);
-
-			if (!__result.RaceProps.hasGenders ||
-				!Settings.Bool(global, state, GenderWindow.OverrideGender))
-				return;
-
-			if (Settings.Bool(global, state, GenderWindow.UnforcedGender) ||
-				request.FixedGender == null)
-			{
-				bool isGlobal = Settings.IsGlobal(state, GenderWindow.OverrideGender);
-				int val = Settings.Int(global, state, GenderWindow.GenderSlider, isGlobal);
-
-				Gender gender =
-					val == 100 ? Gender.Female :
-					val == 0 ? Gender.Male :
-					Rand.Value < val / 100f ?
-						Gender.Female :
-						Gender.Male;
-
-				if (__result.gender != gender)
-					__result.gender = gender;
-			}
-		}
-	}*/
-
-	[HarmonyPatch(typeof(SpouseRelationUtility), "ResolveNameForSpouseOnGeneration")]
+	/*[HarmonyPatch(typeof(SpouseRelationUtility), "ResolveNameForSpouseOnGeneration")]
 	public static class Patch_SpouseRelationUtility_ResolveNameForSpouseOnGeneration
 	{
 		[HarmonyPriority(Priority.Last)]
@@ -56,7 +18,7 @@ namespace RW_CustomPawnGeneration
 
 			return true;
 		}
-	}
+	}*/
 
 	[HarmonyPatch(typeof(ParentRelationUtility), "SetMother")]
 	public static class ParentRelationUtility_SetMother
@@ -301,8 +263,8 @@ namespace RW_CustomPawnGeneration
 		}
 	}
 
-	[HarmonyPatch(typeof(PawnGenerator), "GenerateBodyType_NewTemp")]
-	public static class Patch_PawnGenerator_GenerateBodyType_NewTemp
+	[HarmonyPatch(typeof(PawnGenerator), "GenerateBodyType")]
+	public static class Patch_PawnGenerator_GenerateBodyType
 	{
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPostfix]
