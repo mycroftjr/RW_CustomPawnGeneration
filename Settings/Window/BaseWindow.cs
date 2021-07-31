@@ -15,7 +15,7 @@ namespace RW_CustomPawnGeneration
 		public string label;
 
 		public Vector2 baseScrollVector = Vector2.zero;
-		public Rect baseScrollRect = Rect.zero;
+		public float baseScrollHeight = 0f;
 
 		public BaseWindow(ThingDef race, Gender? gender = null)
 		{
@@ -35,7 +35,7 @@ namespace RW_CustomPawnGeneration
 
 			if (gender != null)
 			{
-				state = new Settings.State(gender.Value, race);
+				state = new Settings.State(race, gender.Value);
 				label += "; " + gender.Value.ToString();
 			}
 			else
@@ -52,7 +52,10 @@ namespace RW_CustomPawnGeneration
 
 		public override void DoWindowContents(Rect inRect)
 		{
-			Listing_Standard gui = new Listing_Standard();
+			Listing_Standard gui = new Listing_Standard
+			{
+				maxOneColumn = true
+			};
 
 			gui.Begin(inRect);
 			{
@@ -64,9 +67,11 @@ namespace RW_CustomPawnGeneration
 
 				Draw_Outside(inRect, gui);
 
-				float height = gui.CurHeight + 20f;
+				gui.Gap(20f);
 
-				gui.BeginScrollView(
+				float height = gui.CurHeight;
+
+				Widgets.BeginScrollView(
 					new Rect(
 						0f,
 						height,
@@ -74,12 +79,19 @@ namespace RW_CustomPawnGeneration
 						inRect.height - height - 40f
 					),
 					ref baseScrollVector,
-					ref baseScrollRect
+					new Rect(
+						0f,
+						height,
+						gui.ColumnWidth - 16f,
+						baseScrollHeight
+					)
 				);
 				{
 					Draw_Inside(inRect, gui);
 				}
-				gui.EndScrollView(ref baseScrollRect);
+				Widgets.EndScrollView();
+
+				baseScrollHeight = gui.CurHeight - height;
 			}
 			gui.End();
 		}

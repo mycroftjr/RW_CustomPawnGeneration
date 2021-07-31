@@ -74,6 +74,8 @@ namespace RW_CustomPawnGeneration
 
 		public override void Draw_Inside(Rect inRect, Listing_Standard gui)
 		{
+			gui.ColumnWidth -= 20f;
+
 			foreach (ThingDef race in Settings.races)
 			{
 				if (race == null || race == this.race)

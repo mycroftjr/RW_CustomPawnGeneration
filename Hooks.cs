@@ -6,45 +6,7 @@ using Verse;
 
 namespace RW_CustomPawnGeneration
 {
-	/*[HarmonyPatch(typeof(PawnGenerator), "TryGenerateNewPawnInternal")]
-	public static class Patch_PawnGenerator_TryGenerateNewPawnInternal
-	{
-		[HarmonyPostfix]
-		public static void Patch(ref Pawn __result,
-								 ref PawnGenerationRequest request,
-								 ref string error,
-								 bool ignoreScenarioRequirements,
-								 bool ignoreValidator)
-		{
-			if (__result == null)
-				return;
-
-			Settings.GetState(__result, out Settings.State global, out Settings.State state);
-
-			if (!__result.RaceProps.hasGenders ||
-				!Settings.Bool(global, state, GenderWindow.OverrideGender))
-				return;
-
-			if (Settings.Bool(global, state, GenderWindow.UnforcedGender) ||
-				request.FixedGender == null)
-			{
-				bool isGlobal = Settings.IsGlobal(state, GenderWindow.OverrideGender);
-				int val = Settings.Int(global, state, GenderWindow.GenderSlider, isGlobal);
-
-				Gender gender =
-					val == 100 ? Gender.Female :
-					val == 0 ? Gender.Male :
-					Rand.Value < val / 100f ?
-						Gender.Female :
-						Gender.Male;
-
-				if (__result.gender != gender)
-					__result.gender = gender;
-			}
-		}
-	}*/
-
-	[HarmonyPatch(typeof(SpouseRelationUtility), "ResolveNameForSpouseOnGeneration")]
+	/*[HarmonyPatch(typeof(SpouseRelationUtility), "ResolveNameForSpouseOnGeneration")]
 	public static class Patch_SpouseRelationUtility_ResolveNameForSpouseOnGeneration
 	{
 		[HarmonyPriority(Priority.Last)]
@@ -56,17 +18,54 @@ namespace RW_CustomPawnGeneration
 
 			return true;
 		}
+	}*/
+
+	[HarmonyPatch(typeof(ParentRelationUtility), "SetMother")]
+	public static class ParentRelationUtility_SetMother
+	{
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyPrefix]
+		public static bool Patch(this Pawn pawn, Pawn newMother)
+		{
+			if (!Settings.BoolMale(pawn, GenderWindow.UnforcedGender))
+				return true;
+
+			// Ignore limitations of being a mother (gender.)
+
+			if (newMother != null)
+				pawn.relations.AddDirectRelation(PawnRelationDefOf.Parent, newMother);
+
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(ParentRelationUtility), "SetFather")]
+	public static class ParentRelationUtility_SetFather
+	{
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyPrefix]
+		public static bool Patch(this Pawn pawn, Pawn newFather)
+		{
+			if (!Settings.BoolMale(pawn, GenderWindow.UnforcedGender))
+				return true;
+
+			// Ignore limitations of being a father (gender.)
+
+			if (newFather != null)
+				pawn.relations.AddDirectRelation(PawnRelationDefOf.Parent, newFather);
+
+			return false;
+		}
 	}
 
 	[HarmonyPatch(typeof(ParentRelationUtility), "GetFather")]
 	public static class Patch_ParentRelationUtility_GetFather
 	{
-
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPostfix]
 		public static void Patch(this Pawn pawn, ref Pawn __result)
 		{
-			if (!Settings.Bool(pawn, GenderWindow.UnforcedGender))
+			if (!Settings.BoolMale(pawn, GenderWindow.UnforcedGender))
 				return;
 
 			if (__result != null)
@@ -75,19 +74,18 @@ namespace RW_CustomPawnGeneration
 			if (!pawn.RaceProps.IsFlesh)
 				return;
 
-			List<DirectPawnRelation> directRelations = pawn.relations.DirectRelations;
+			// If parents are both females, get the 2nd one.
+			IEnumerable<DirectPawnRelation> directRelations = pawn.relations.DirectRelations.Where(v => v.def == PawnRelationDefOf.Parent);
+			DirectPawnRelation male = directRelations.FirstOrDefault(v => v.otherPawn.gender != Gender.Female);
 
-			for (int i = directRelations.Count - 1; i >= 0; i--)
+			if (male != null)
 			{
-				DirectPawnRelation directPawnRelation = directRelations[i];
-
-				if (directPawnRelation.def == PawnRelationDefOf.Parent)
-				{
-					__result = directPawnRelation.otherPawn;
-
-					return;
-				}
+				__result = male.otherPawn;
+				return;
 			}
+
+			DirectPawnRelation mother = directRelations.FirstOrDefault(v => v.otherPawn.gender != Gender.Male);
+			__result = directRelations.FirstOrDefault(v => v != mother)?.otherPawn;
 		}
 	}
 
@@ -98,7 +96,7 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPostfix]
 		public static void Patch(this Pawn pawn, ref Pawn __result)
 		{
-			if (!Settings.Bool(pawn, GenderWindow.UnforcedGender))
+			if (!Settings.BoolMale(pawn, GenderWindow.UnforcedGender))
 				return;
 
 			if (__result != null)
@@ -107,19 +105,18 @@ namespace RW_CustomPawnGeneration
 			if (!pawn.RaceProps.IsFlesh)
 				return;
 
-			List<DirectPawnRelation> directRelations = pawn.relations.DirectRelations;
+			// If parents are both males, get the 2nd one.
+			IEnumerable<DirectPawnRelation> directRelations = pawn.relations.DirectRelations.Where(v => v.def == PawnRelationDefOf.Parent);
+			DirectPawnRelation female = directRelations.FirstOrDefault(v => v.otherPawn.gender != Gender.Male);
 
-			for (int i = directRelations.Count - 1; i >= 0; i--)
+			if (female != null)
 			{
-				DirectPawnRelation directPawnRelation = directRelations[i];
-
-				if (directPawnRelation.def == PawnRelationDefOf.Parent)
-				{
-					__result = directPawnRelation.otherPawn;
-
-					return;
-				}
+				__result = female.otherPawn;
+				return;
 			}
+
+			DirectPawnRelation father = directRelations.FirstOrDefault(v => v.otherPawn.gender != Gender.Female);
+			__result = directRelations.FirstOrDefault(v => v != father)?.otherPawn;
 		}
 	}
 
@@ -136,17 +133,15 @@ namespace RW_CustomPawnGeneration
 
 			bool isGlobal = Settings.IsGlobal(state, AgeWindow.HasMaxAge);
 			int MaxAge = Settings.Int(global, state, AgeWindow.MaxAge, isGlobal);
+			int ageYears = __instance.AgeBiologicalYears;
 
-			long ticks = __instance.AgeBiologicalTicks;
-			long excess = ticks / 3600000;
-
-			if (excess > MaxAge)
+			if (ageYears > MaxAge)
 			{
-				excess = (excess - MaxAge) * 3600000;
-				__instance.AgeBiologicalTicks -= excess;
+				long ticks = (ageYears - MaxAge) * 3600000;
+				__instance.AgeBiologicalTicks -= ticks;
 
 				if (Settings.Bool(global, state, AgeWindow.MaxAgeChrono))
-					__instance.AgeChronologicalTicks += excess;
+					__instance.AgeChronologicalTicks += ticks;
 			}
 		}
 	}
@@ -177,7 +172,7 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static void Prefix(Pawn pawn, PawnGenerationRequest request)
 		{
-			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
+			Settings.GetStateMale(pawn, out Settings.State global, out Settings.State state);
 
 			if (!pawn.RaceProps.hasGenders ||
 				!Settings.Bool(global, state, GenderWindow.OverrideGender))
@@ -187,14 +182,17 @@ namespace RW_CustomPawnGeneration
 				request.FixedGender == null)
 			{
 				bool isGlobal = Settings.IsGlobal(state, GenderWindow.OverrideGender);
-				int val = Settings.Int(global, state, GenderWindow.GenderSlider, isGlobal);
+				int value = Settings.Int(global, state, GenderWindow.GenderSlider, isGlobal);
+				Gender gender;
 
-				Gender gender =
-					val == 100 ? Gender.Female :
-					val == 0 ? Gender.Male :
-					Rand.Value < val / 100f ?
-						Gender.Female :
-						Gender.Male;
+				if (value == 100)
+					gender = Gender.Female;
+				else if (value == 0)
+					gender = Gender.Male;
+				else if (Rand.Value < value / 100f)
+					gender = Gender.Female;
+				else
+					gender = Gender.Male;
 
 				if (pawn.gender != gender)
 					pawn.gender = gender;
@@ -268,7 +266,7 @@ namespace RW_CustomPawnGeneration
 	{
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPostfix]
-		public static void Patch(Pawn pawn)
+		public static void Patch(Pawn pawn, PawnGenerationRequest request)
 		{
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
 
@@ -276,16 +274,15 @@ namespace RW_CustomPawnGeneration
 				return;
 
 			bool IsGlobal = Settings.IsGlobal(state, BodyWindow.FilterBody);
-
 			BodyTypeDef type = pawn.story.bodyType;
 
-			if (Settings.Bool(global, state, type.defName, IsGlobal))
+			if (Settings.Bool(global, state, $"{BodyWindow.FilterBody}|{type.defName}", IsGlobal))
 				return;
 
 			HashSet<BodyTypeDef> list = new HashSet<BodyTypeDef>();
 
 			foreach (BodyTypeDef def in DefDatabase<BodyTypeDef>.AllDefs)
-				if (Settings.Bool(global, state, def.defName, IsGlobal))
+				if (Settings.Bool(global, state, $"{BodyWindow.FilterBody}|{def.defName}", IsGlobal))
 					list.Add(def);
 
 			if (!list.TryRandomElement(out BodyTypeDef newBody))
@@ -298,19 +295,21 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(PawnGenerator), "GenerateTraits")]
 	public static class Patch_PawnGenerator_GenerateTraits
 	{
-		public static int _ctr = 0;
+		public static Dictionary<Pawn, int> pending = new Dictionary<Pawn, int>();
 
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPrefix]
 		public static void Prefix(Pawn pawn, PawnGenerationRequest request)
 		{
-			_ctr = 0;
+			pending[pawn] = 0;
 		}
 
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPostfix]
 		public static void Postfix(Pawn pawn, PawnGenerationRequest request)
 		{
+			pending.Remove(pawn);
+
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
 
 			bool OverrideTraits = Settings.Bool(global, state, TraitsWindow.OverrideTraits);
@@ -323,19 +322,15 @@ namespace RW_CustomPawnGeneration
 			foreach (TraitDef def in DefDatabase<TraitDef>.AllDefs)
 				foreach (TraitDegreeData data in def.degreeDatas)
 				{
-					int i = Settings.Int(global, state, $"Trait|{def.defName}|{data.degree}", IsGlobal);
+					bool flag = Settings.Int(
+						global,
+						state,
+						$"{TraitsWindow.Trait}|{def.defName}|{data.degree}",
+						IsGlobal
+					) == 2;
 
-					if (i == 1)
-					{
-						Trait trait = pawn.story.traits.allTraits.FirstOrDefault(
-							v => v.def == def && v.Degree == data.degree
-						);
-
-						if (trait != null)
-							pawn.story.traits.allTraits.Remove(trait);
-					}
-					else if (i == 2)
-						pawn.story.traits.allTraits.Add(new Trait(def, data.degree));
+					if (flag)
+						pawn.story.traits.GainTrait(new Trait(def, data.degree));
 				}
 		}
 	}
@@ -343,49 +338,36 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(TraitSet), "GainTrait")]
 	public static class Patch_TraitSet_GainTrait
 	{
+		/// <summary>
+		/// This limits how many times the game
+		/// re-rolls a trait for a pawn,
+		/// preventing it from creating
+		/// a permanent loop.
+		/// </summary>
+		public const int MAX_STACK = 100;
+
 		[HarmonyPrefix]
-		public static void Prefix(TraitSet __instance, Trait trait, Pawn ___pawn)
+		public static bool Prefix(TraitSet __instance, Trait trait, Pawn ___pawn)
 		{
+			if (!Patch_PawnGenerator_GenerateTraits.pending.ContainsKey(___pawn))
+				return true;
+
 			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
 
 			if (!Settings.Bool(global, state, TraitsWindow.OverrideTraits))
-				return;
+				return true;
 
-			if (Patch_PawnGenerator_GenerateTraits._ctr > 1000)
+			if (Patch_PawnGenerator_GenerateTraits.pending[___pawn] > MAX_STACK)
 			{
-				Log.Error($"[Nyan.CustomPawnGeneration] Trait gain too many iterations.");
-				return;
+				Log.Warning("[CustomPawnGeneration] Rolled for traits too many times! Try not to block/force too many of them!");
+				Patch_PawnGenerator_GenerateTraits.pending.Remove(___pawn);
+				return true;
 			}
 
 			bool IsGlobal = Settings.IsGlobal(state, TraitsWindow.OverrideTraits);
-			bool flag = Settings.Int(global, state, $"Trait|{trait.def.defName}|{trait.Degree}", IsGlobal) != 0;
 
-			if (flag && !__instance.HasTrait(trait.def))
-			{
-				__instance.allTraits.Add(trait);
-				Patch_PawnGenerator_GenerateTraits._ctr++;
-			}
-		}
-
-		[HarmonyPostfix]
-		public static void Postfix(TraitSet __instance, Trait trait, Pawn ___pawn)
-		{
-			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
-
-			if (!Settings.Bool(global, state, TraitsWindow.OverrideTraits))
-				return;
-
-			if (Patch_PawnGenerator_GenerateTraits._ctr > 1000)
-			{
-				Patch_PawnGenerator_GenerateTraits._ctr = 0;
-				return;
-			}
-
-			bool IsGlobal = Settings.IsGlobal(state, TraitsWindow.OverrideTraits);
-			bool flag = Settings.Int(global, state, $"Trait|{trait.def.defName}|{trait.Degree}", IsGlobal) != 0;
-
-			if (flag && __instance.HasTrait(trait.def))
-				__instance.allTraits.Remove(trait);
+			Patch_PawnGenerator_GenerateTraits.pending[___pawn]++;
+			return Settings.Int(global, state, $"{TraitsWindow.Trait}|{trait.def.defName}|{trait.Degree}", IsGlobal) == 0;
 		}
 	}
 

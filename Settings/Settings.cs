@@ -14,7 +14,10 @@ namespace RW_CustomPawnGeneration
 			if (IntStates == null)
 				IntStates = new Dictionary<string, int>();
 
-			Listing_Standard gui = new Listing_Standard();
+			Listing_Standard gui = new Listing_Standard
+			{
+				maxOneColumn = true
+			};
 
 			gui.Begin(inRect);
 			{
@@ -30,10 +33,8 @@ namespace RW_CustomPawnGeneration
 			Scribe_Collections.Look(ref IntStates, "IntStates", LookMode.Value);
 		}
 
-		public static bool IsGlobal(State state, string key)
-		{
-			return state.Get(key) == 0;
-		}
+		public static bool IsGlobal(State state, string key) =>
+			state.Get(key) == 0;
 
 		/// <summary>
 		/// A bool value but has an option to redirect to the global config.
@@ -48,6 +49,12 @@ namespace RW_CustomPawnGeneration
 				return global.Get(key) == 1;
 			else
 				return value == 2;
+		}
+
+		public static bool BoolMale(Pawn pawn, string key)
+		{
+			GetStateMale(pawn, out State global, out State state);
+			return Bool(global, state, key);
 		}
 
 		public static bool Bool(State global, State state, string key)
@@ -73,17 +80,30 @@ namespace RW_CustomPawnGeneration
 			return Int(global, state, key, isGlobal) == 1;
 		}
 
-		public static void GetState(Pawn pawn, out State global, out State state)
+		/// <summary>
+		/// Configuration state representing the male settings.
+		/// If `SeparateGender` is not enabled,
+		/// female configuration points to the male configuration.
+		/// </summary>
+		public static void GetStateMale(Pawn pawn, out State global, out State state)
 		{
 			global = new State(null);
 			state = new State(pawn.kindDef.race);
+		}
+
+		/// <summary>
+		/// Automatically points to the female configuration state if `SeparateGender` is enabled.
+		/// </summary>
+		public static void GetState(Pawn pawn, out State global, out State state)
+		{
+			GetStateMale(pawn, out global, out state);
 
 			if (pawn.RaceProps.hasGenders &&
 				pawn.gender == Gender.Female &&
 				Bool(global, state, GenderWindow.SeparateGender))
 			{
-				global = new State(pawn.gender);
-				state = new State(pawn.gender, pawn.kindDef.race);
+				global = new State(null, pawn.gender);
+				state = new State(pawn.kindDef.race, pawn.gender);
 			}
 		}
 	}

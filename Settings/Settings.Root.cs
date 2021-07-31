@@ -18,13 +18,15 @@ namespace RW_CustomPawnGeneration
 		public const string ADVANCED_MODE = "Advanced Settings";
 		public const string GLOBAL_CONFIG = "[Global Config]";
 
+		public const string AdvancedMode = "AdvancedMode";
+
 		public static string HEADER_RESET(string v) =>
 			$"This will restore all the default values to the '{v}' settings. Are you sure?";
 
-		public static bool AdvancedMode = false;
+		//public static bool AdvancedMode = false;
 
 		public static Vector2 scrollVector = Vector2.zero;
-		public static Rect scrollRect = Rect.zero;
+		public static float scrollHeight = 0f;
 
 		public static List<ThingDef> races = null;
 
@@ -43,14 +45,15 @@ namespace RW_CustomPawnGeneration
 
 			gui.ColumnWidth = width * 0.5f;
 			{
-				gui.CheckboxLabeled(ADVANCED_MODE, ref AdvancedMode, DESCRIPTION_ADVANCED_MODE);
+				Tools.Bool(gui, State.GLOBAL, AdvancedMode, ADVANCED_MODE, DESCRIPTION_ADVANCED_MODE);
+				//gui.CheckboxLabeled(ADVANCED_MODE, ref AdvancedMode, DESCRIPTION_ADVANCED_MODE);
 			}
 
 			gui.Gap(20f);
 
 			float height = gui.CurHeight;
 
-			if (!AdvancedMode)
+			if (!State.GLOBAL.Bool(AdvancedMode))
 			{
 				if (gui.ButtonText(SHOW_CONFIG))
 					new EditWindow();
@@ -66,7 +69,7 @@ namespace RW_CustomPawnGeneration
 				return;
 			}
 
-			gui.BeginScrollView(
+			Widgets.BeginScrollView(
 				new Rect(
 					0f,
 					height,
@@ -74,7 +77,13 @@ namespace RW_CustomPawnGeneration
 					inRect.height - height - 40f
 				),
 				ref scrollVector,
-				ref scrollRect
+				new Rect(
+					0f,
+					height,
+					width - 16f,
+					//inRect.height + height - 40f + races.Count * 24f
+					scrollHeight
+				)
 			);
 			{
 				Text.Anchor = TextAnchor.MiddleRight;
@@ -92,6 +101,7 @@ namespace RW_CustomPawnGeneration
 				}
 				Text.Anchor = TextAnchor.UpperLeft;
 				gui.NewColumn();
+				gui.Gap(height);
 				gui.ColumnWidth = width * 0.1f;
 				{
 					foreach (ThingDef race in races)
@@ -99,6 +109,7 @@ namespace RW_CustomPawnGeneration
 							new EditWindow(race);
 				}
 				gui.NewColumn();
+				gui.Gap(height);
 				{
 					foreach (ThingDef race in races)
 						if (race == null)
@@ -107,6 +118,7 @@ namespace RW_CustomPawnGeneration
 							new CopyWindow(race);
 				}
 				gui.NewColumn();
+				gui.Gap(height);
 				{
 					foreach (ThingDef race in races)
 						if (gui.ButtonText(RESET))
@@ -115,14 +127,15 @@ namespace RW_CustomPawnGeneration
 								YES,
 								() =>
 								{
-									new State(Gender.Female, race).Clear();
-									new State(Gender.Male, race).Clear();
+									new State(race, Gender.Female).Clear();
+									new State(race, Gender.Male).Clear();
 								},
 								NO
 							));
 				}
+				scrollHeight = gui.CurHeight - height;
 			}
-			gui.EndScrollView(ref scrollRect);
+			Widgets.EndScrollView();
 		}
 	}
 }
