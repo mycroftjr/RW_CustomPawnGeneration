@@ -33,10 +33,8 @@ namespace RW_CustomPawnGeneration
 			Scribe_Collections.Look(ref IntStates, "IntStates", LookMode.Value);
 		}
 
-		public static bool IsGlobal(State state, string key)
-		{
-			return state.Get(key) == 0;
-		}
+		public static bool IsGlobal(State state, string key) =>
+			state.Get(key) == 0;
 
 		/// <summary>
 		/// A bool value but has an option to redirect to the global config.

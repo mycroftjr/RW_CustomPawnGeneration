@@ -133,17 +133,15 @@ namespace RW_CustomPawnGeneration
 
 			bool isGlobal = Settings.IsGlobal(state, AgeWindow.HasMaxAge);
 			int MaxAge = Settings.Int(global, state, AgeWindow.MaxAge, isGlobal);
+			int ageYears = __instance.AgeBiologicalYears;
 
-			long ticks = __instance.AgeBiologicalTicks;
-			long excess = ticks / 3600000;
-
-			if (excess > MaxAge)
+			if (ageYears > MaxAge)
 			{
-				excess = (excess - MaxAge) * 3600000;
-				__instance.AgeBiologicalTicks -= excess;
+				long ticks = (ageYears - MaxAge) * 3600000;
+				__instance.AgeBiologicalTicks -= ticks;
 
 				if (Settings.Bool(global, state, AgeWindow.MaxAgeChrono))
-					__instance.AgeChronologicalTicks += excess;
+					__instance.AgeChronologicalTicks += ticks;
 			}
 		}
 	}
@@ -297,19 +295,21 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(PawnGenerator), "GenerateTraits")]
 	public static class Patch_PawnGenerator_GenerateTraits
 	{
-		public static int _ctr = 0;
+		public static Dictionary<Pawn, int> pending = new Dictionary<Pawn, int>();
 
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPrefix]
 		public static void Prefix(Pawn pawn, PawnGenerationRequest request)
 		{
-			_ctr = 0;
+			pending[pawn] = 0;
 		}
 
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPostfix]
 		public static void Postfix(Pawn pawn, PawnGenerationRequest request)
 		{
+			pending.Remove(pawn);
+
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
 
 			bool OverrideTraits = Settings.Bool(global, state, TraitsWindow.OverrideTraits);
@@ -322,19 +322,15 @@ namespace RW_CustomPawnGeneration
 			foreach (TraitDef def in DefDatabase<TraitDef>.AllDefs)
 				foreach (TraitDegreeData data in def.degreeDatas)
 				{
-					int i = Settings.Int(global, state, $"{TraitsWindow.Trait}|{def.defName}|{data.degree}", IsGlobal);
+					bool flag = Settings.Int(
+						global,
+						state,
+						$"{TraitsWindow.Trait}|{def.defName}|{data.degree}",
+						IsGlobal
+					) == 2;
 
-					if (i == 1)
-					{
-						Trait trait = pawn.story.traits.allTraits.FirstOrDefault(
-							v => v.def == def && v.Degree == data.degree
-						);
-
-						if (trait != null)
-							pawn.story.traits.allTraits.Remove(trait);
-					}
-					else if (i == 2)
-						pawn.story.traits.allTraits.Add(new Trait(def, data.degree));
+					if (flag)
+						pawn.story.traits.GainTrait(new Trait(def, data.degree));
 				}
 		}
 	}
@@ -351,48 +347,27 @@ namespace RW_CustomPawnGeneration
 		public const int MAX_STACK = 100;
 
 		[HarmonyPrefix]
-		public static void Prefix(TraitSet __instance, Trait trait, Pawn ___pawn)
+		public static bool Prefix(TraitSet __instance, Trait trait, Pawn ___pawn)
 		{
+			if (!Patch_PawnGenerator_GenerateTraits.pending.ContainsKey(___pawn))
+				return true;
+
 			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
 
 			if (!Settings.Bool(global, state, TraitsWindow.OverrideTraits))
-				return;
+				return true;
 
-			if (Patch_PawnGenerator_GenerateTraits._ctr > MAX_STACK)
+			if (Patch_PawnGenerator_GenerateTraits.pending[___pawn] > MAX_STACK)
 			{
-				Log.Error($"[Nyan.CustomPawnGeneration] Trait gain too many iterations.");
-				return;
+				Log.Warning("[CustomPawnGeneration] Rolled for traits too many times! Try not to block/force too many of them!");
+				Patch_PawnGenerator_GenerateTraits.pending.Remove(___pawn);
+				return true;
 			}
 
 			bool IsGlobal = Settings.IsGlobal(state, TraitsWindow.OverrideTraits);
-			bool flag = Settings.Int(global, state, $"{TraitsWindow.Trait}|{trait.def.defName}|{trait.Degree}", IsGlobal) != 0;
 
-			if (flag && !__instance.HasTrait(trait.def))
-			{
-				__instance.allTraits.Add(trait);
-				Patch_PawnGenerator_GenerateTraits._ctr++;
-			}
-		}
-
-		[HarmonyPostfix]
-		public static void Postfix(TraitSet __instance, Trait trait, Pawn ___pawn)
-		{
-			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
-
-			if (!Settings.Bool(global, state, TraitsWindow.OverrideTraits))
-				return;
-
-			if (Patch_PawnGenerator_GenerateTraits._ctr > MAX_STACK)
-			{
-				Patch_PawnGenerator_GenerateTraits._ctr = 0;
-				return;
-			}
-
-			bool IsGlobal = Settings.IsGlobal(state, TraitsWindow.OverrideTraits);
-			bool flag = Settings.Int(global, state, $"{TraitsWindow.Trait}|{trait.def.defName}|{trait.Degree}", IsGlobal) != 0;
-
-			if (flag && __instance.HasTrait(trait.def))
-				__instance.allTraits.Remove(trait);
+			Patch_PawnGenerator_GenerateTraits.pending[___pawn]++;
+			return Settings.Int(global, state, $"{TraitsWindow.Trait}|{trait.def.defName}|{trait.Degree}", IsGlobal) == 0;
 		}
 	}
 

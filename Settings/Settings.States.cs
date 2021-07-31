@@ -35,31 +35,31 @@ namespace RW_CustomPawnGeneration
 
 			public int Get(string key)
 			{
-				string _key = prefix + key;
+				string key0 = prefix + key;
 
-				if (IntStates != null && IntStates.ContainsKey(_key))
-					return IntStates[_key];
+				if (IntStates != null && IntStates.ContainsKey(key0))
+					return IntStates[key0];
 
 				return IntDefaults.ContainsKey(key) ? IntDefaults[key] : 0;
 			}
 
 			public void Set(string key, int value)
 			{
-				string _key = prefix + key;
-				int _default = IntDefaults.ContainsKey(key) ? IntDefaults[key] : 0;
+				string key0 = prefix + key;
+				int @default = IntDefaults.ContainsKey(key) ? IntDefaults[key] : 0;
 
-				if (value != _default)
-					IntStates[_key] = value;
-				else if (IntStates.ContainsKey(_key))
-					IntStates.Remove(_key);
+				if (value != @default)
+					IntStates[key0] = value;
+				else if (IntStates.ContainsKey(key0))
+					IntStates.Remove(key0);
 			}
 
 			public void Remove(string key)
 			{
-				string _key = prefix + key;
+				string key0 = prefix + key;
 
-				if (IntStates.ContainsKey(_key))
-					IntStates.Remove(_key);
+				if (IntStates.ContainsKey(key0))
+					IntStates.Remove(key0);
 			}
 
 			public bool GBool(string key)
