@@ -49,10 +49,11 @@ namespace RW_CustomPawnGeneration
 						continue;
 
 					if (key.Contains(currPrefix))
+						// Exclude race name.
 						currState.Add(new Tuple<string, string, int>(
-							key.StartsWith("0|") ? "0|" : "1|",
-							key.Substring(key.IndexOf(currPrefix) + currPrefix.Length),
-							Settings.IntStates[key]
+							key.Substring(0, key.IndexOf(currPrefix)), // Gender
+							key.Substring(key.IndexOf(currPrefix) + currPrefix.Length), // Category + SubCategory
+							Settings.IntStates[key] // Value
 						));
 				}
 
@@ -62,9 +63,11 @@ namespace RW_CustomPawnGeneration
 
 					foreach (string key in Settings.IntStates.Keys.ToArray())
 						if (key.Contains(prefix))
+							// Remove all settings related to this race.
 							Settings.IntStates.Remove(key);
 
 					foreach (Tuple<string, string, int> tuple in currState)
+						// Copy settings.
 						Settings.IntStates[tuple.Item1 + prefix + tuple.Item2] = tuple.Item3;
 				}
 

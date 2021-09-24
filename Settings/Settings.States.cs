@@ -10,6 +10,25 @@ namespace RW_CustomPawnGeneration
 			public static State GLOBAL = new State(null);
 
 			public bool global;
+			/// <summary>
+			/// {Gender:Integer}|{Race:String:Optional}|{Category:String}|{SubCategory:String:Optional}
+			/// <br></br>
+			/// By default, females also use the male settings.
+			/// To allow females to have separate settings, `1|{Race:String:Optional}|SeparateGender` must be enabled.
+			/// <br></br>
+			/// Example;
+			/// <br></br>
+			/// 1|Human|FilterBody|Fat =
+			/// Fat body type filter settings for human males.
+			/// <br></br>
+			/// 1||FilterBody|Thin =
+			/// Thin body type filter settings for all races.
+			/// This only applies to any races that have body types, including race mods (humanoid alien races.)
+			/// <br></br>
+			/// 2|Human|FilterBody|Hulk =
+			/// Hulk body type filter settings for human females.
+			/// This will only be used if `1|Human|SeparateGender` is enabled.
+			/// </summary>
 			public string prefix;
 
 			public State(ThingDef race, Gender gender = Gender.Male)

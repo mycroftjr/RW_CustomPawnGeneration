@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using HarmonyLib;
+using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -8,6 +9,10 @@ namespace RW_CustomPawnGeneration
 	{
 		public const string DESCRIPTION_ADVANCED_MODE =
 			"Shows individual settings for each race.";
+		public const string DESCRIPTION_CUSTOM_AGING =
+			"When enabled, allows pawns to have a custom aging speed (in game ticks.) " +
+			"This option may slow down your game significiantly, particularly on larger colonies. " +
+			"This does not affect other age-related options.";
 
 		public const string RESET = "Reset";
 		public const string YES = "Yes";
@@ -16,12 +21,14 @@ namespace RW_CustomPawnGeneration
 		public const string EDIT = "Edit";	
 		public const string SHOW_CONFIG = "Show Config";
 		public const string ADVANCED_MODE = "Advanced Settings";
+		public const string CUSTOM_AGING = "Enable Custom Aging Ticks";
 		public const string GLOBAL_CONFIG = "[Global Config]";
 
 		public const string AdvancedMode = "AdvancedMode";
+		public const string CustomAging = "CustomAging";
 
 		public static string HEADER_RESET(string v) =>
-			$"This will restore all the default values to the '{v}' settings. Are you sure?";
+			$"This will restore all the default values to the '{v}' settings and cannot be undone. Are you sure?";
 
 		//public static bool AdvancedMode = false;
 
@@ -46,7 +53,28 @@ namespace RW_CustomPawnGeneration
 			gui.ColumnWidth = width * 0.5f;
 			{
 				Tools.Bool(gui, State.GLOBAL, AdvancedMode, ADVANCED_MODE, DESCRIPTION_ADVANCED_MODE);
+				bool _CustomAging = Tools.Bool(
+					gui,
+					State.GLOBAL,
+					out bool _CustomAgingUpdated,
+					CustomAging,
+					CUSTOM_AGING,
+					DESCRIPTION_CUSTOM_AGING
+				);
 				//gui.CheckboxLabeled(ADVANCED_MODE, ref AdvancedMode, DESCRIPTION_ADVANCED_MODE);
+
+
+				// Patch/unpatch hooks since this is heavy on performance.
+
+				if (_CustomAgingUpdated)
+					if (_CustomAging)
+						Patch_Pawn_AgeTracker_AgeTick.ManualPatch();
+					else
+						RW_CustomPawnGeneration.patcher.Unpatch(
+							Patch_Pawn_AgeTracker_AgeTick.method,
+							HarmonyPatchType.All,
+							RW_CustomPawnGeneration.ID
+						);
 			}
 
 			gui.Gap(20f);

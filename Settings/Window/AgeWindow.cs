@@ -117,6 +117,7 @@ namespace RW_CustomPawnGeneration
 					ref _AgeTick,
 					ref _AgeTickBuffer
 				);
+
 				state.Set(AgeTick, _AgeTick);
 			}
 		}
