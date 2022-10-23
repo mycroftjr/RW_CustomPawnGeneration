@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using HarmonyLib;
+using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -8,6 +9,14 @@ namespace RW_CustomPawnGeneration
 	{
 		public const string DESCRIPTION_ADVANCED_MODE =
 			"Shows individual settings for each race.";
+		public const string DESCRIPTION_CUSTOM_AGING =
+			"When enabled, allows pawns to have a custom aging speed (in game ticks.) " +
+			"This option may slow down your game significiantly, particularly on larger colonies. " +
+			"This does not affect other age-related options.";
+		public const string DESCRIPTION_GLOBAL_CONFIG =
+			"All races that do not have any modified settings or " +
+			"uses the [Use Global Config] option will refer to this instead. " +
+			"Some options will only be applied when necessary (body types for humanoid races only, etc.)";
 
 		public const string RESET = "Reset";
 		public const string YES = "Yes";
@@ -16,12 +25,14 @@ namespace RW_CustomPawnGeneration
 		public const string EDIT = "Edit";	
 		public const string SHOW_CONFIG = "Show Config";
 		public const string ADVANCED_MODE = "Advanced Settings";
+		public const string CUSTOM_AGING = "Enable Custom Aging Ticks";
 		public const string GLOBAL_CONFIG = "[Global Config]";
+		public const string SEARCH = "Search ";
 
 		public const string AdvancedMode = "AdvancedMode";
+		public const string CustomAging = "CustomAging";
 
-		public static string HEADER_RESET(string v) =>
-			$"This will restore all the default values to the '{v}' settings. Are you sure?";
+		public static string Search_Buffer = "";
 
 		//public static bool AdvancedMode = false;
 
@@ -29,6 +40,63 @@ namespace RW_CustomPawnGeneration
 		public static float scrollHeight = 0f;
 
 		public static List<ThingDef> races = null;
+
+		public static string HEADER_RESET(string v) =>
+			$"This will restore all the default values to the '{v}' settings and cannot be undone. Are you sure?";
+
+		public static void Draw_Root_Race_Reset(ThingDef race)
+		{
+			Find.WindowStack.Add(new Dialog_MessageBox(
+				HEADER_RESET(race != null ? race.defName : GLOBAL_CONFIG),
+				YES,
+				() =>
+				{
+					new State(race, Gender.Female).Clear();
+					new State(race, Gender.Male).Clear();
+				},
+				NO
+			));
+		}
+
+		public static void Draw_Root_Race(ThingDef race)
+		{
+			void Callback(int i)
+			{
+				switch (i)
+				{
+					case 0:
+						new EditWindow(race);
+						break;
+					case 1:
+						if (race != null)
+							new CopyWindow(race);
+						else
+							Draw_Root_Race_Reset(race);
+						break;
+					case 2:
+						Draw_Root_Race_Reset(race);
+						break;
+				}
+			}
+
+			if (race != null)
+				new ComboWindow(
+					Callback,
+					$"[{race.defName}] {race.LabelCap}",
+					race.DescriptionDetailed,
+					EDIT,
+					COPY_TO,
+					RESET
+				);
+			else
+				new ComboWindow(
+					Callback,
+					GLOBAL_CONFIG,
+					DESCRIPTION_GLOBAL_CONFIG,
+					EDIT,
+					RESET
+				);
+		}
 
 		public static void Draw_Root(Listing_Standard gui, Rect inRect)
 		{
@@ -46,12 +114,34 @@ namespace RW_CustomPawnGeneration
 			gui.ColumnWidth = width * 0.5f;
 			{
 				Tools.Bool(gui, State.GLOBAL, AdvancedMode, ADVANCED_MODE, DESCRIPTION_ADVANCED_MODE);
+				bool _CustomAging = Tools.Bool(
+					gui,
+					State.GLOBAL,
+					out bool _CustomAgingUpdated,
+					CustomAging,
+					CUSTOM_AGING,
+					DESCRIPTION_CUSTOM_AGING
+				);
 				//gui.CheckboxLabeled(ADVANCED_MODE, ref AdvancedMode, DESCRIPTION_ADVANCED_MODE);
+
+
+				// Patch/unpatch hooks since this is heavy on performance.
+
+				if (_CustomAgingUpdated)
+					if (_CustomAging)
+						Patch_Pawn_AgeTracker_AgeTick.ManualPatch();
+					else
+						RW_CustomPawnGeneration.patcher.Unpatch(
+							Patch_Pawn_AgeTracker_AgeTick.method,
+							HarmonyPatchType.All,
+							RW_CustomPawnGeneration.ID
+						);
 			}
 
 			gui.Gap(20f);
 
-			float height = gui.CurHeight;
+
+			// Basic Settings
 
 			if (!State.GLOBAL.Bool(AdvancedMode))
 			{
@@ -69,70 +159,42 @@ namespace RW_CustomPawnGeneration
 				return;
 			}
 
+
+			// Advanced Settings
+
+			Search_Buffer = gui.TextEntryLabeled(SEARCH, Search_Buffer);
+
+			float height = gui.CurHeight;
+
 			Widgets.BeginScrollView(
 				new Rect(
 					0f,
 					height,
-					width,
+					gui.ColumnWidth + 20f,
 					inRect.height - height - 40f
 				),
 				ref scrollVector,
 				new Rect(
 					0f,
 					height,
-					width - 16f,
+					gui.ColumnWidth - 16f,
 					//inRect.height + height - 40f + races.Count * 24f
 					scrollHeight
 				)
 			);
 			{
-				Text.Anchor = TextAnchor.MiddleRight;
-				gui.ColumnWidth = width * 0.4f;
-				{
-					foreach (ThingDef race in races)
+				foreach (ThingDef race in races)
+					if (race != null)
 					{
-						if (race != null)
-							gui.Label(race.defName, tooltip: race.LabelCap);
-						else
-							gui.Label(GLOBAL_CONFIG);
-
-						gui.GapLine(8f);
+						if (Search_Buffer.Length == 0 ||
+							race.defName.ToLower().Contains(Search_Buffer) ||
+							race.LabelCap.ToLower().ToStringSafe().Contains(Search_Buffer))
+							if (gui.ButtonText(race.defName))
+								Draw_Root_Race(race);
 					}
-				}
-				Text.Anchor = TextAnchor.UpperLeft;
-				gui.NewColumn();
-				gui.Gap(height);
-				gui.ColumnWidth = width * 0.1f;
-				{
-					foreach (ThingDef race in races)
-						if (gui.ButtonText(EDIT))
-							new EditWindow(race);
-				}
-				gui.NewColumn();
-				gui.Gap(height);
-				{
-					foreach (ThingDef race in races)
-						if (race == null)
-							gui.Gap(31.4f);
-						else if (gui.ButtonText(COPY_TO))
-							new CopyWindow(race);
-				}
-				gui.NewColumn();
-				gui.Gap(height);
-				{
-					foreach (ThingDef race in races)
-						if (gui.ButtonText(RESET))
-							Find.WindowStack.Add(new Dialog_MessageBox(
-								HEADER_RESET(race != null ? race.defName : GLOBAL_CONFIG),
-								YES,
-								() =>
-								{
-									new State(race, Gender.Female).Clear();
-									new State(race, Gender.Male).Clear();
-								},
-								NO
-							));
-				}
+					else if (gui.ButtonText(GLOBAL_CONFIG))
+						Draw_Root_Race(null);
+
 				scrollHeight = gui.CurHeight - height;
 			}
 			Widgets.EndScrollView();
