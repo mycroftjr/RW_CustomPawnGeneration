@@ -2,6 +2,7 @@
 using RimWorld;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Verse;
 
 namespace RW_CustomPawnGeneration
@@ -149,9 +150,20 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(Pawn_AgeTracker), "AgeTick")]
 	public static class Patch_Pawn_AgeTracker_AgeTick
 	{
+		public static bool initialized = false;
+		public static MethodInfo method = typeof(Pawn_AgeTracker).GetMethod("AgeTick");
+
 		[HarmonyPrefix]
 		public static void Patch(Pawn_AgeTracker __instance, Pawn ___pawn)
 		{
+			if (!initialized)
+			{
+				if (!Settings.State.GLOBAL.Bool(Settings.CustomAging))
+					RW_CustomPawnGeneration.patcher.Unpatch(method, HarmonyPatchType.All, RW_CustomPawnGeneration.ID);
+
+				initialized = true;
+			}
+
 			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
 
 			int tick = Settings.Int(global, state, AgeWindow.AgeTick, Settings.IsGlobal(state, AgeWindow.HasAgeTick));
@@ -160,6 +172,17 @@ namespace RW_CustomPawnGeneration
 				__instance.AgeBiologicalTicks--;
 			else if (tick > 1)
 				__instance.AgeTickMothballed(tick - 1);
+		}
+
+		/// <summary>
+		/// Use this to manually patch this hook.
+		/// </summary>
+		public static void ManualPatch()
+		{
+			RW_CustomPawnGeneration.patcher.Patch(
+				method,
+				prefix: new HarmonyMethod(typeof(Patch_Pawn_AgeTracker_AgeTick).GetMethod("Patch"))
+			);
 		}
 	}
 
