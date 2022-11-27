@@ -296,22 +296,111 @@ namespace RW_CustomPawnGeneration
 			if (!Settings.Bool(global, state, BodyWindow.FilterBody))
 				return;
 
-			bool IsGlobal = Settings.IsGlobal(state, BodyWindow.FilterBody);
+			bool is_global = Settings.IsGlobal(state, BodyWindow.FilterBody);
 			BodyTypeDef type = pawn.story.bodyType;
 
-			if (Settings.Bool(global, state, $"{BodyWindow.FilterBody}|{type.defName}", IsGlobal))
+			if (type.CPGEnabled(global, state, is_global))
 				return;
 
-			HashSet<BodyTypeDef> list = new HashSet<BodyTypeDef>();
 
-			foreach (BodyTypeDef def in DefDatabase<BodyTypeDef>.AllDefs)
-				if (Settings.Bool(global, state, $"{BodyWindow.FilterBody}|{def.defName}", IsGlobal))
-					list.Add(def);
+			// Try complying with the vanilla body type generation first.
 
-			if (!list.TryRandomElement(out BodyTypeDef newBody))
+			BodyTypeDef filtered_vanilla_body =
+				GetBodyTypeFor(
+					pawn,
+					global,
+					state,
+					is_global
+				);
+
+			if (filtered_vanilla_body != null)
+			{
+				pawn.story.bodyType = filtered_vanilla_body;
 				return;
+			}
 
-			pawn.story.bodyType = newBody;
+
+			// Just pick a random body type, except the Biotech stuff.
+
+			bool forced_random =
+				Tools
+				.AllCPGAdultBodyTypes(global, state, is_global)
+				.TryRandomElement(out BodyTypeDef forced_random_body);
+
+			if (forced_random)
+			{
+				pawn.story.bodyType = forced_random_body;
+				return;
+			}
+
+			Log.Warning(
+				"[CustomPawnGeneration] A pawn's body type was not filtered properly! " +
+				"You may be blocking too many body types."
+			);
+		}
+
+		/// <summary>
+		/// A filtered version of the vanilla `GetBodyTypeFor` function,
+		/// with respect to the Biotech `DevelopmentalStage`.
+		/// </summary>
+		public static BodyTypeDef GetBodyTypeFor
+			(Pawn pawn,
+			Settings.State global,
+			Settings.State state,
+			bool is_global)
+		{
+			if (ModsConfig.BiotechActive && pawn.DevelopmentalStage.Juvenile())
+			{
+				if (pawn.DevelopmentalStage == DevelopmentalStage.Baby)
+					return BodyTypeDefOf.Baby;
+
+				return BodyTypeDefOf.Child;
+			}
+
+			if (ModsConfig.BiotechActive && pawn.genes != null)
+			{
+				HashSet<BodyTypeDef> bodyTypes = new HashSet<BodyTypeDef>();
+				List<Gene> genesListForReading = pawn.genes.GenesListForReading;
+
+				for (int i = 0; i < genesListForReading.Count; i++)
+					if (genesListForReading[i].def.bodyType != null)
+					{
+						BodyTypeDef bodyType =
+							genesListForReading[i]
+							.def
+							.bodyType
+							.Value
+							.ToBodyType(pawn);
+
+						if (bodyType.CPGEnabled(global, state, is_global))
+							bodyTypes.Add(bodyType);
+					}
+
+				if (bodyTypes.TryRandomElement(out BodyTypeDef result))
+					return result;
+			}
+
+			if (pawn.story.Adulthood != null)
+			{
+				BodyTypeDef body_type = pawn.story.Adulthood.BodyTypeFor(pawn.gender);
+
+				if (body_type.CPGEnabled(global, state, is_global))
+					return body_type;
+			}
+
+			bool thin = BodyTypeDefOf.Thin.CPGEnabled(global, state, is_global);
+
+			if (thin && Rand.Value < 0.5f)
+				return BodyTypeDefOf.Thin;
+
+			if (BodyTypeDefOf.Male.CPGEnabled(global, state, is_global) &&
+				pawn.gender != Gender.Female)
+				return BodyTypeDefOf.Male;
+
+			if (BodyTypeDefOf.Female.CPGEnabled(global, state, is_global))
+				return BodyTypeDefOf.Female;
+
+			return null;
 		}
 	}
 
