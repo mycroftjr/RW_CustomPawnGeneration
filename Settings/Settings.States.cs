@@ -7,7 +7,11 @@ namespace RW_CustomPawnGeneration
 	{
 		public struct State
 		{
+			/// <summary>
+			/// Also used for males.
+			/// </summary>
 			public static State GLOBAL = new State(null);
+			public static State FEMALE = new State(null, Gender.Female);
 
 			public bool global;
 			/// <summary>
@@ -85,8 +89,8 @@ namespace RW_CustomPawnGeneration
 			{
 				if (global)
 					return Get(key) == 1;
-				else
-					return Get(key) == 2;
+
+				return Get(key) == 2;
 			}
 
 			public bool Bool(string key)

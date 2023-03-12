@@ -28,7 +28,7 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static bool Patch(this Pawn pawn, Pawn newMother)
 		{
-			if (!Settings.BoolMale(pawn, GenderWindow.UnforcedGender))
+			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return true;
 
 			// Ignore limitations of being a mother (gender.)
@@ -47,7 +47,7 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static bool Patch(this Pawn pawn, Pawn newFather)
 		{
-			if (!Settings.BoolMale(pawn, GenderWindow.UnforcedGender))
+			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return true;
 
 			// Ignore limitations of being a father (gender.)
@@ -66,7 +66,7 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPostfix]
 		public static void Patch(this Pawn pawn, ref Pawn __result)
 		{
-			if (!Settings.BoolMale(pawn, GenderWindow.UnforcedGender))
+			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return;
 
 			if (__result != null)
@@ -75,9 +75,13 @@ namespace RW_CustomPawnGeneration
 			if (!pawn.RaceProps.IsFlesh)
 				return;
 
-			// If parents are both females, get the 2nd one.
-			IEnumerable<DirectPawnRelation> directRelations = pawn.relations.DirectRelations.Where(v => v.def == PawnRelationDefOf.Parent);
-			DirectPawnRelation male = directRelations.FirstOrDefault(v => v.otherPawn.gender != Gender.Female);
+			IEnumerable<DirectPawnRelation> directRelations =
+				pawn.relations.DirectRelations
+				.Where(v => v.def == PawnRelationDefOf.Parent);
+
+			DirectPawnRelation male =
+				directRelations
+				.FirstOrDefault(v => v.otherPawn.gender != Gender.Female);
 
 			if (male != null)
 			{
@@ -85,8 +89,17 @@ namespace RW_CustomPawnGeneration
 				return;
 			}
 
-			DirectPawnRelation mother = directRelations.FirstOrDefault(v => v.otherPawn.gender != Gender.Male);
-			__result = directRelations.FirstOrDefault(v => v != mother)?.otherPawn;
+
+			// Both parents are female, get the 2nd pawn.
+
+			DirectPawnRelation mother =
+				directRelations
+				.FirstOrDefault(v => v.otherPawn.gender != Gender.Male);
+
+			__result =
+				directRelations
+				.FirstOrDefault(v => v != mother)
+				?.otherPawn;
 		}
 	}
 
@@ -97,7 +110,7 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPostfix]
 		public static void Patch(this Pawn pawn, ref Pawn __result)
 		{
-			if (!Settings.BoolMale(pawn, GenderWindow.UnforcedGender))
+			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return;
 
 			if (__result != null)
@@ -106,9 +119,13 @@ namespace RW_CustomPawnGeneration
 			if (!pawn.RaceProps.IsFlesh)
 				return;
 
-			// If parents are both males, get the 2nd one.
-			IEnumerable<DirectPawnRelation> directRelations = pawn.relations.DirectRelations.Where(v => v.def == PawnRelationDefOf.Parent);
-			DirectPawnRelation female = directRelations.FirstOrDefault(v => v.otherPawn.gender != Gender.Male);
+			IEnumerable<DirectPawnRelation> directRelations =
+				pawn.relations.DirectRelations
+				.Where(v => v.def == PawnRelationDefOf.Parent);
+
+			DirectPawnRelation female =
+				directRelations
+				.FirstOrDefault(v => v.otherPawn.gender != Gender.Male);
 
 			if (female != null)
 			{
@@ -116,8 +133,17 @@ namespace RW_CustomPawnGeneration
 				return;
 			}
 
-			DirectPawnRelation father = directRelations.FirstOrDefault(v => v.otherPawn.gender != Gender.Female);
-			__result = directRelations.FirstOrDefault(v => v != father)?.otherPawn;
+
+			// Both pawns are male, get 2nd pawn.
+
+			DirectPawnRelation father =
+				directRelations
+				.FirstOrDefault(v => v.otherPawn.gender != Gender.Female);
+
+			__result =
+				directRelations
+				.FirstOrDefault(v => v != father)
+				?.otherPawn;
 		}
 	}
 
@@ -133,12 +159,12 @@ namespace RW_CustomPawnGeneration
 				return;
 
 			bool isGlobal = Settings.IsGlobal(state, AgeWindow.HasMaxAge);
-			int MaxAge = Settings.Int(global, state, AgeWindow.MaxAge, isGlobal);
+			int maxAge = Settings.Int(global, state, AgeWindow.MaxAge, isGlobal);
 			int ageYears = __instance.AgeBiologicalYears;
 
-			if (ageYears > MaxAge)
+			if (ageYears > maxAge)
 			{
-				long ticks = (ageYears - MaxAge) * 3600000;
+				long ticks = (ageYears - maxAge) * 3600000;
 				__instance.AgeBiologicalTicks -= ticks;
 
 				if (Settings.Bool(global, state, AgeWindow.MaxAgeChrono))
