@@ -20,7 +20,7 @@ namespace RW_CustomPawnGeneration
 
 			Settings.IntDefaults[AgeWindow.MaxAge] = 99;
 			Settings.IntDefaults[AgeWindow.AgeTick] = 1;
-			Settings.IntDefaults[Settings.CustomAging] = 1;
+			Settings.IntDefaults[Settings.CustomAging] = 0;
 
 			foreach (BodyTypeDef def in DefDatabase<BodyTypeDef>.AllDefs)
 				Settings.IntDefaults[def.defName] = 1;

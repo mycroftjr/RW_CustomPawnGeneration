@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -6,13 +7,14 @@ namespace RW_CustomPawnGeneration
 {
 	public partial class Settings : ModSettings
 	{
-		public static Dictionary<string, int> IntDefaults = new Dictionary<string, int>();
+		public static Dictionary<string, int> IntDefaults =
+			new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 		public static Dictionary<string, int> IntStates = null;
 
 		public static void DoWindowContents(Rect inRect)
 		{
 			if (IntStates == null)
-				IntStates = new Dictionary<string, int>();
+				IntStates = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
 			Listing_Standard gui = new Listing_Standard
 			{
@@ -51,7 +53,7 @@ namespace RW_CustomPawnGeneration
 				return value == 2;
 		}
 
-		public static bool BoolMale(Pawn pawn, string key)
+		public static bool GBool(Pawn pawn, string key)
 		{
 			GetStateMale(pawn, out State global, out State state);
 			return Bool(global, state, key);
@@ -87,7 +89,7 @@ namespace RW_CustomPawnGeneration
 		/// </summary>
 		public static void GetStateMale(Pawn pawn, out State global, out State state)
 		{
-			global = new State(null);
+			global = State.GLOBAL;
 			state = new State(pawn.kindDef.race);
 		}
 
@@ -102,7 +104,7 @@ namespace RW_CustomPawnGeneration
 				pawn.gender == Gender.Female &&
 				Bool(global, state, GenderWindow.SeparateGender))
 			{
-				global = new State(null, pawn.gender);
+				global = State.FEMALE;
 				state = new State(pawn.kindDef.race, pawn.gender);
 			}
 		}
