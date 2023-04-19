@@ -63,43 +63,46 @@ namespace RW_CustomPawnGeneration
 	public static class Patch_ParentRelationUtility_GetFather
 	{
 		[HarmonyPriority(Priority.Last)]
-		[HarmonyPostfix]
-		public static void Patch(this Pawn pawn, ref Pawn __result)
+		[HarmonyPrefix]
+		public static bool Patch(this Pawn pawn, ref Pawn __result)
 		{
 			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
-				return;
+				return true;
 
 			if (__result != null)
-				return;
+				return true;
 
 			if (!pawn.RaceProps.IsFlesh)
-				return;
+				return false;
 
-			IEnumerable<DirectPawnRelation> directRelations =
-				pawn.relations.DirectRelations
-				.Where(v => v.def == PawnRelationDefOf.Parent);
+			if (pawn.relations == null)
+				return false;
 
-			DirectPawnRelation male =
-				directRelations
-				.FirstOrDefault(v => v.otherPawn.gender != Gender.Female);
 
-			if (male != null)
+			bool has_mother = false;
+
+			foreach (DirectPawnRelation relation in pawn.relations.DirectRelations)
 			{
-				__result = male.otherPawn;
-				return;
+				if (relation.def == PawnRelationDefOf.Parent)
+					continue;
+
+				if (relation.otherPawn.gender == Gender.Female)
+				{
+					if (has_mother)
+						// Use the 2nd female parent as the father.
+						__result = relation.otherPawn;
+					else
+						has_mother = true;
+
+					continue;
+				}
+
+				// Found male parent.
+				__result = relation.otherPawn;
+				break;
 			}
 
-
-			// Both parents are female, get the 2nd pawn.
-
-			DirectPawnRelation mother =
-				directRelations
-				.FirstOrDefault(v => v.otherPawn.gender != Gender.Male);
-
-			__result =
-				directRelations
-				.FirstOrDefault(v => v != mother)
-				?.otherPawn;
+			return false;
 		}
 	}
 
@@ -107,43 +110,46 @@ namespace RW_CustomPawnGeneration
 	public static class Patch_ParentRelationUtility_GetMother
 	{
 		[HarmonyPriority(Priority.Last)]
-		[HarmonyPostfix]
-		public static void Patch(this Pawn pawn, ref Pawn __result)
+		[HarmonyPrefix]
+		public static bool Patch(this Pawn pawn, ref Pawn __result)
 		{
 			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
-				return;
+				return true;
 
 			if (__result != null)
-				return;
+				return true;
 
 			if (!pawn.RaceProps.IsFlesh)
-				return;
+				return false;
 
-			IEnumerable<DirectPawnRelation> directRelations =
-				pawn.relations.DirectRelations
-				.Where(v => v.def == PawnRelationDefOf.Parent);
+			if (pawn.relations == null)
+				return false;
 
-			DirectPawnRelation female =
-				directRelations
-				.FirstOrDefault(v => v.otherPawn.gender != Gender.Male);
 
-			if (female != null)
+			bool has_father = false;
+
+			foreach (DirectPawnRelation relation in pawn.relations.DirectRelations)
 			{
-				__result = female.otherPawn;
-				return;
+				if (relation.def == PawnRelationDefOf.Parent)
+					continue;
+
+				if (relation.otherPawn.gender != Gender.Female)
+				{
+					if (has_father)
+						// Use the 2nd non-female parent as the mother.
+						__result = relation.otherPawn;
+					else
+						has_father = true;
+
+					continue;
+				}
+
+				// Found female parent.
+				__result = relation.otherPawn;
+				break;
 			}
 
-
-			// Both pawns are male, get 2nd pawn.
-
-			DirectPawnRelation father =
-				directRelations
-				.FirstOrDefault(v => v.otherPawn.gender != Gender.Female);
-
-			__result =
-				directRelations
-				.FirstOrDefault(v => v != father)
-				?.otherPawn;
+			return false;
 		}
 	}
 
@@ -292,12 +298,13 @@ namespace RW_CustomPawnGeneration
 			}
 		}
 
-		public static long PseudoPreserveCurve(long age,
-											   long min0,
-											   long min1,
-											   long max1,
-											   long len0,
-											   long len1)
+		public static long PseudoPreserveCurve
+			(long age,
+			long min0,
+			long min1,
+			long max1,
+			long len0,
+			long len1)
 		{
 			long factor =
 				len0 > max1 ?
