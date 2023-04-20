@@ -62,10 +62,20 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(ParentRelationUtility), "GetFather")]
 	public static class Patch_ParentRelationUtility_GetFather
 	{
+		public static readonly Module module =
+			new Module(
+				Settings.UngenderedParent,
+				typeof(ParentRelationUtility)
+				.GetMethod("GetFather"),
+				prefix: new HarmonyMethod(typeof(Patch_ParentRelationUtility_GetFather).GetMethod("Patch"))
+			);
+
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPrefix]
 		public static bool Patch(this Pawn pawn, ref Pawn __result)
 		{
+			module.Do();
+
 			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return true;
 
@@ -109,10 +119,20 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(ParentRelationUtility), "GetMother")]
 	public static class Patch_ParentRelationUtility_GetMother
 	{
+		public static readonly Module module =
+			new Module(
+				Settings.UngenderedParent,
+				typeof(ParentRelationUtility)
+				.GetMethod("GetMother"),
+				prefix: new HarmonyMethod(typeof(Patch_ParentRelationUtility_GetMother).GetMethod("Patch"))
+			);
+
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPrefix]
 		public static bool Patch(this Pawn pawn, ref Pawn __result)
 		{
+			module.Do();
+
 			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return true;
 
@@ -182,19 +202,18 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(Pawn_AgeTracker), "AgeTick")]
 	public static class Patch_Pawn_AgeTracker_AgeTick
 	{
-		public static bool initialized = false;
-		public static MethodInfo method = typeof(Pawn_AgeTracker).GetMethod("AgeTick");
+		public static readonly Module module =
+			new Module(
+				Settings.CustomAging,
+				typeof(Pawn_AgeTracker)
+				.GetMethod("AgeTick"),
+				prefix: new HarmonyMethod(typeof(Patch_Pawn_AgeTracker_AgeTick).GetMethod("Patch"))
+			);
 
 		[HarmonyPrefix]
 		public static void Patch(Pawn_AgeTracker __instance, Pawn ___pawn)
 		{
-			if (!initialized)
-			{
-				if (!Settings.State.GLOBAL.Bool(Settings.CustomAging))
-					RW_CustomPawnGeneration.patcher.Unpatch(method, HarmonyPatchType.All, RW_CustomPawnGeneration.ID);
-
-				initialized = true;
-			}
+			module.Do();
 
 			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
 
@@ -204,17 +223,6 @@ namespace RW_CustomPawnGeneration
 				__instance.AgeBiologicalTicks--;
 			else if (tick > 1)
 				__instance.AgeTickMothballed(tick - 1);
-		}
-
-		/// <summary>
-		/// Use this to manually patch this hook.
-		/// </summary>
-		public static void ManualPatch()
-		{
-			RW_CustomPawnGeneration.patcher.Patch(
-				method,
-				prefix: new HarmonyMethod(typeof(Patch_Pawn_AgeTracker_AgeTick).GetMethod("Patch"))
-			);
 		}
 	}
 
