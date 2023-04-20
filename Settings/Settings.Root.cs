@@ -17,6 +17,12 @@ namespace RW_CustomPawnGeneration
 			"All races that do not have any modified settings or " +
 			"uses the [Use Global Config] option will refer to this instead. " +
 			"Some options will only be applied when necessary (body types for humanoid races only, etc.)";
+		public const string DESCRIPTION_UNGENDERED_PARENT =
+			"When enabled, all pawns can either be a mother or father, " +
+			"regardless of gender.\n" +
+			"Some have reported this to cause lag, " +
+			"possibly from a mod incompatibility.\n" +
+			"If this causes lag for you, please disable this.";
 
 		public const string RESET = "Reset";
 		public const string YES = "Yes";
@@ -26,11 +32,13 @@ namespace RW_CustomPawnGeneration
 		public const string SHOW_CONFIG = "Show Config";
 		public const string ADVANCED_MODE = "Advanced Settings";
 		public const string CUSTOM_AGING = "Enable Custom Aging Ticks";
+		public const string UNGENDERED_PARENT = "Remove Parent Gender Restrictions";
 		public const string GLOBAL_CONFIG = "[Global Config]";
 		public const string SEARCH = "Search ";
 
 		public const string AdvancedMode = "AdvancedMode";
 		public const string CustomAging = "CustomAging";
+		public const string UngenderedParent = "UngenderedParent";
 
 		public static string Search_Buffer = "";
 
@@ -114,6 +122,7 @@ namespace RW_CustomPawnGeneration
 			gui.ColumnWidth = width * 0.5f;
 			{
 				Tools.Bool(gui, State.GLOBAL, AdvancedMode, ADVANCED_MODE, DESCRIPTION_ADVANCED_MODE);
+
 				bool _CustomAging = Tools.Bool(
 					gui,
 					State.GLOBAL,
@@ -122,6 +131,16 @@ namespace RW_CustomPawnGeneration
 					CUSTOM_AGING,
 					DESCRIPTION_CUSTOM_AGING
 				);
+
+				bool _UngenderedParent = Tools.Bool(
+					gui,
+					State.GLOBAL,
+					out bool _UngenderedParentUpdated,
+					UngenderedParent,
+					UNGENDERED_PARENT,
+					DESCRIPTION_UNGENDERED_PARENT
+				);
+
 				//gui.CheckboxLabeled(ADVANCED_MODE, ref AdvancedMode, DESCRIPTION_ADVANCED_MODE);
 
 
@@ -129,13 +148,21 @@ namespace RW_CustomPawnGeneration
 
 				if (_CustomAgingUpdated)
 					if (_CustomAging)
-						Patch_Pawn_AgeTracker_AgeTick.ManualPatch();
+						Patch_Pawn_AgeTracker_AgeTick.module.Patch();
 					else
-						RW_CustomPawnGeneration.patcher.Unpatch(
-							Patch_Pawn_AgeTracker_AgeTick.method,
-							HarmonyPatchType.All,
-							RW_CustomPawnGeneration.ID
-						);
+						Patch_Pawn_AgeTracker_AgeTick.module.Unpatch();
+
+				if (_UngenderedParentUpdated)
+					if (_UngenderedParent)
+					{
+						Patch_ParentRelationUtility_GetFather.module.Patch();
+						Patch_ParentRelationUtility_GetMother.module.Patch();
+					}
+					else
+					{
+						Patch_ParentRelationUtility_GetFather.module.Unpatch();
+						Patch_ParentRelationUtility_GetMother.module.Unpatch();
+					}
 			}
 
 			gui.Gap(20f);
