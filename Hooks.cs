@@ -297,12 +297,16 @@ namespace RW_CustomPawnGeneration
 				min1 *= AGE;
 				max1 *= AGE;
 
-				pawn.ageTracker.AgeBiologicalTicks =
-					age < min1 ?
-						min1 :
-					age > max1 ?
-						max1 :
-						age;
+				long newAge =
+					age < min1
+					? min1
+					: age > max1
+					? max1
+					: age;
+
+				pawn.ageTracker.AgeBiologicalTicks = newAge;
+				pawn.ageTracker.AgeChronologicalTicks +=
+					newAge - pawn.ageTracker.AgeBiologicalTicks;
 			}
 		}
 
