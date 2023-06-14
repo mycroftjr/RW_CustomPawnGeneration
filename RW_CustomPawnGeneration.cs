@@ -31,6 +31,8 @@ namespace RW_CustomPawnGeneration
 
 			patcher = new Harmony(ID);
 			patcher.PatchAll(Assembly.GetExecutingAssembly());
+
+			Module.InitializeAll();
 		}
 	}
 }
