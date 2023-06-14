@@ -1,10 +1,13 @@
 ﻿using HarmonyLib;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace RW_CustomPawnGeneration
 {
 	public class Module
 	{
+		private static readonly HashSet<Module> all = new HashSet<Module>();
+
 		private bool initialized = false;
 		private readonly string key = null;
 		private readonly MethodInfo method = null;
@@ -12,6 +15,8 @@ namespace RW_CustomPawnGeneration
 		private readonly HarmonyMethod postfix = null;
 		private readonly HarmonyMethod transplier = null;
 		private readonly HarmonyMethod finalizer = null;
+
+		public bool IsPatched { get; private set; } = true;
 
 		public Module
 			(string key,
@@ -21,6 +26,8 @@ namespace RW_CustomPawnGeneration
 			HarmonyMethod transplier = null,
 			HarmonyMethod finalizer = null)
 		{
+			all.Add(this);
+
 			this.key = key;
 			this.method = method;
 			this.prefix = prefix;
@@ -29,7 +36,7 @@ namespace RW_CustomPawnGeneration
 			this.finalizer = finalizer;
 		}
 
-		public void Do()
+		private void Initialize()
 		{
 			if (initialized)
 				return;
@@ -42,6 +49,11 @@ namespace RW_CustomPawnGeneration
 
 		public void Unpatch()
 		{
+			if (!IsPatched)
+				return;
+
+			IsPatched = false;
+
 			RW_CustomPawnGeneration.patcher.Unpatch(
 				method,
 				HarmonyPatchType.All,
@@ -51,6 +63,11 @@ namespace RW_CustomPawnGeneration
 
 		public void Patch()
 		{
+			if (IsPatched)
+				return;
+
+			IsPatched = true;
+
 			RW_CustomPawnGeneration.patcher.Patch(
 				method,
 				prefix,
@@ -58,6 +75,12 @@ namespace RW_CustomPawnGeneration
 				transplier,
 				finalizer
 			);
+		}
+
+		public static void InitializeAll()
+		{
+			foreach (Module module in all)
+				module.Initialize();
 		}
 	}
 }

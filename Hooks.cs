@@ -1,8 +1,6 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using Verse;
 
 namespace RW_CustomPawnGeneration
@@ -28,13 +26,21 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static bool Patch(this Pawn pawn, Pawn newMother)
 		{
+			if (pawn == null)
+				return true;
+
 			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return true;
 
 			// Ignore limitations of being a mother (gender.)
 
-			if (newMother != null)
-				pawn.relations.AddDirectRelation(PawnRelationDefOf.Parent, newMother);
+			if (newMother == null)
+				return false;
+
+			if (newMother == pawn.GetMother())
+				return false;
+
+			pawn.relations.AddDirectRelation(PawnRelationDefOf.Parent, newMother);
 
 			return false;
 		}
@@ -47,13 +53,21 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static bool Patch(this Pawn pawn, Pawn newFather)
 		{
+			if (pawn == null)
+				return true;
+
 			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return true;
 
 			// Ignore limitations of being a father (gender.)
 
-			if (newFather != null)
-				pawn.relations.AddDirectRelation(PawnRelationDefOf.Parent, newFather);
+			if (newFather == null)
+				return false;
+
+			if (newFather == pawn.GetFather())
+				return false;
+
+			pawn.relations.AddDirectRelation(PawnRelationDefOf.Parent, newFather);
 
 			return false;
 		}
@@ -74,12 +88,13 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static bool Patch(this Pawn pawn, ref Pawn __result)
 		{
-			module.Do();
-
-			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
+			if (pawn == null)
 				return true;
 
 			if (__result != null)
+				return true;
+
+			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return true;
 
 			if (!pawn.RaceProps.IsFlesh)
@@ -93,7 +108,7 @@ namespace RW_CustomPawnGeneration
 
 			foreach (DirectPawnRelation relation in pawn.relations.DirectRelations)
 			{
-				if (relation.def == PawnRelationDefOf.Parent)
+				if (relation.def != PawnRelationDefOf.Parent)
 					continue;
 
 				if (relation.otherPawn.gender == Gender.Female)
@@ -131,12 +146,13 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static bool Patch(this Pawn pawn, ref Pawn __result)
 		{
-			module.Do();
-
-			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
+			if (pawn == null)
 				return true;
 
 			if (__result != null)
+				return true;
+
+			if (!Settings.GBool(pawn, GenderWindow.UnforcedGender))
 				return true;
 
 			if (!pawn.RaceProps.IsFlesh)
@@ -150,7 +166,7 @@ namespace RW_CustomPawnGeneration
 
 			foreach (DirectPawnRelation relation in pawn.relations.DirectRelations)
 			{
-				if (relation.def == PawnRelationDefOf.Parent)
+				if (relation.def != PawnRelationDefOf.Parent)
 					continue;
 
 				if (relation.otherPawn.gender != Gender.Female)
@@ -179,6 +195,9 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static void Patch(Pawn_AgeTracker __instance, Pawn ___pawn)
 		{
+			if (___pawn == null)
+				return;
+
 			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
 
 			if (!Settings.Bool(global, state, AgeWindow.HasMaxAge))
@@ -213,7 +232,8 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static void Patch(Pawn_AgeTracker __instance, Pawn ___pawn)
 		{
-			module.Do();
+			if (___pawn == null)
+				return;
 
 			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
 
@@ -235,6 +255,9 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static void Prefix(Pawn pawn, PawnGenerationRequest request)
 		{
+			if (pawn == null)
+				return;
+
 			Settings.GetStateMale(pawn, out Settings.State global, out Settings.State state);
 
 			if (!pawn.RaceProps.hasGenders ||
@@ -265,6 +288,9 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPostfix]
 		public static void Postfix(Pawn pawn, PawnGenerationRequest request)
 		{
+			if (pawn == null)
+				return;
+
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
 
 			bool HasMinAge = Settings.Bool(global, state, AgeWindow.HasMinAge);
@@ -336,6 +362,9 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPostfix]
 		public static void Patch(Pawn pawn, PawnGenerationRequest request)
 		{
+			if (pawn == null)
+				return;
+
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
 
 			if (!Settings.Bool(global, state, BodyWindow.FilterBody))
@@ -452,12 +481,15 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(PawnGenerator), "GenerateTraits")]
 	public static class Patch_PawnGenerator_GenerateTraits
 	{
-		public static Dictionary<Pawn, int> pending = new Dictionary<Pawn, int>();
+		public static Dictionary<Pawn, ushort> pending = new Dictionary<Pawn, ushort>();
 
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPrefix]
 		public static void Prefix(Pawn pawn, PawnGenerationRequest request)
 		{
+			if (pawn == null)
+				return;
+
 			pending[pawn] = 0;
 		}
 
@@ -465,6 +497,9 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPostfix]
 		public static void Postfix(Pawn pawn, PawnGenerationRequest request)
 		{
+			if (pawn == null)
+				return;
+
 			pending.Remove(pawn);
 
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
@@ -501,11 +536,14 @@ namespace RW_CustomPawnGeneration
 		/// preventing it from creating
 		/// a permanent loop.
 		/// </summary>
-		public const int MAX_STACK = 100;
+		public const ushort MAX_STACK = 100;
 
 		[HarmonyPrefix]
 		public static bool Prefix(TraitSet __instance, Trait trait, Pawn ___pawn)
 		{
+			if (___pawn == null)
+				return true;
+
 			if (!Patch_PawnGenerator_GenerateTraits.pending.ContainsKey(___pawn))
 				return true;
 
@@ -528,12 +566,15 @@ namespace RW_CustomPawnGeneration
 		}
 	}
 
-	[HarmonyPatch(typeof(PawnGenerator), "GenerateOrRedressPawnInternal")]
-	public static class Patch_PawnGenerator_GenerateOrRedressPawnInternal
+	[HarmonyPatch(typeof(PawnGenerator), "GeneratePawn", typeof(PawnGenerationRequest))]
+	public static class Patch_PawnGenerator_GeneratePawn
 	{
 		[HarmonyPostfix, HarmonyPriority(Priority.Last)]
 		public static void Patch(Pawn __result, PawnGenerationRequest request)
 		{
+			if (__result == null)
+				return;
+
 			Settings.GetState(__result, out _, out Settings.State state);
 
 			foreach (HediffDef def in DefDatabase<HediffDef>.AllDefs)
@@ -551,6 +592,72 @@ namespace RW_CustomPawnGeneration
 						__result.health.AddHediff(def, part);
 				}
 			}
+		}
+	}
+
+	/// <summary>
+	/// Dirty fix for the pawn relations.
+	/// </summary>
+	[HarmonyPatch(typeof(PawnGenerator), "GeneratePawnRelations")]
+	public static class Patch_PawnGenerator_GeneratePawnRelations
+	{
+		/// <summary>
+		/// 0 = Do nothing;
+		/// 1 = Unpatch at postfix then set to 0;
+		/// 2+ = Decrement;
+		/// </summary>
+		private static ushort should_unpatch = 0;
+		private static bool in_postfix = false;
+
+		public static void Unpatch()
+		{
+			should_unpatch = 0;
+
+			Patch_ParentRelationUtility_GetFather.module.Unpatch();
+			Patch_ParentRelationUtility_GetMother.module.Unpatch();
+		}
+
+		[HarmonyPrefix]
+		public static void Prefix(Pawn pawn, ref PawnGenerationRequest request)
+		{
+			// Forcibly patch `ParentRelationUtility`.
+
+			if (in_postfix)
+			{
+				// Something went wrong. Reset.
+				in_postfix = false;
+
+				if (should_unpatch > 0)
+					Unpatch();
+			}
+
+			if (!Patch_ParentRelationUtility_GetFather.module.IsPatched)
+			{
+				in_postfix = true;
+				should_unpatch = 1;
+
+				Patch_ParentRelationUtility_GetFather.module.Patch();
+				Patch_ParentRelationUtility_GetMother.module.Patch();
+			}
+			else if (should_unpatch > 0)
+			{
+				in_postfix = true;
+				should_unpatch++;
+			}
+		}
+
+		[HarmonyPostfix]
+		public static void Postfix(Pawn pawn, ref PawnGenerationRequest request)
+		{
+			// Disable patches.
+
+			if (should_unpatch > 1)
+				should_unpatch--;
+
+			else if (should_unpatch == 1)
+				Unpatch();
+
+			in_postfix = false;
 		}
 	}
 }
