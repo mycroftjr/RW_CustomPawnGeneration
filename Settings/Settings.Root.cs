@@ -1,5 +1,4 @@
-﻿using HarmonyLib;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -12,7 +11,8 @@ namespace RW_CustomPawnGeneration
 		public const string DESCRIPTION_CUSTOM_AGING =
 			"When enabled, allows pawns to have a custom aging speed (in game ticks.) " +
 			"This option may slow down your game significiantly, particularly on larger colonies. " +
-			"This does not affect other age-related options.";
+			"This does not affect other age-related options.\n" +
+			"Requires a restart to take effect.";
 		public const string DESCRIPTION_GLOBAL_CONFIG =
 			"All races that do not have any modified settings or " +
 			"uses the [Use Global Config] option will refer to this instead. " +
@@ -22,7 +22,8 @@ namespace RW_CustomPawnGeneration
 			"regardless of gender.\n" +
 			"Some have reported this to cause lag, " +
 			"possibly from a mod incompatibility.\n" +
-			"If this causes lag for you, please disable this.";
+			"If this causes lag for you, please disable this.\n" +
+			"Requires a restart to take effect.";
 
 		public const string RESET = "Reset";
 		public const string YES = "Yes";
