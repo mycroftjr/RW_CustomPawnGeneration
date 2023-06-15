@@ -34,10 +34,15 @@ namespace RW_CustomPawnGeneration
 			this.postfix = postfix;
 			this.transplier = transplier;
 			this.finalizer = finalizer;
+
+			Initialize();
 		}
 
 		private void Initialize()
 		{
+			if (RW_CustomPawnGeneration.patcher == null)
+				return;
+
 			if (initialized)
 				return;
 
