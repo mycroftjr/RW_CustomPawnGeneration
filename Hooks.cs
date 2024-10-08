@@ -258,6 +258,15 @@ namespace RW_CustomPawnGeneration
 			if (pawn == null)
 				return;
 
+			if (!Patch_PawnGenerator_TryGenerateNewPawnInternal.pending.ContainsKey(request))
+				return;
+
+			if (Patch_PawnGenerator_TryGenerateNewPawnInternal.pending[request]++ > 50)
+			{
+				Log.Warning("[CustomPawnGeneration] Rolled for gender too many times! Another mod might be controlling it!");
+				return;
+			}
+
 			Settings.GetStateMale(pawn, out Settings.State global, out Settings.State state);
 
 			if (!pawn.RaceProps.hasGenders ||
@@ -475,6 +484,26 @@ namespace RW_CustomPawnGeneration
 				return BodyTypeDefOf.Female;
 
 			return null;
+		}
+	}
+
+	[HarmonyPatch(typeof(PawnGenerator), "TryGenerateNewPawnInternal")]
+	public static class Patch_PawnGenerator_TryGenerateNewPawnInternal
+	{
+		public static Dictionary<PawnGenerationRequest, ushort> pending = new Dictionary<PawnGenerationRequest, ushort>();
+
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyPrefix]
+		public static void Prefix(PawnGenerationRequest request)
+		{
+			pending[request] = 0;
+		}
+
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyPostfix]
+		public static void Postfix(PawnGenerationRequest request)
+		{
+			pending.Remove(request);
 		}
 	}
 
