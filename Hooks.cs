@@ -2,6 +2,7 @@
 using RimWorld;
 using System.Collections.Generic;
 using Verse;
+using static RW_CustomPawnGeneration.Settings;
 
 namespace RW_CustomPawnGeneration
 {
@@ -253,7 +254,7 @@ namespace RW_CustomPawnGeneration
 
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPrefix]
-		public static void Prefix(Pawn pawn, PawnGenerationRequest request)
+		public static void Prefix(Pawn pawn, ref PawnGenerationRequest request)
 		{
 			if (pawn == null)
 				return;
@@ -271,7 +272,13 @@ namespace RW_CustomPawnGeneration
 
 			if (!pawn.RaceProps.hasGenders ||
 				!Settings.Bool(global, state, GenderWindow.OverrideGender))
+            {
+				if (!pawn.RaceProps.hasGenders)
+                {
+					Log.WarningOnce(pawn.ToString(), 54321);
+                }
 				return;
+			}
 
 			if (Settings.Bool(global, state, GenderWindow.UnforcedGender) ||
 				request.FixedGender == null)
@@ -603,6 +610,15 @@ namespace RW_CustomPawnGeneration
 	[HarmonyPatch(typeof(PawnGenerator), "GeneratePawn", typeof(PawnGenerationRequest))]
 	public static class Patch_PawnGenerator_GeneratePawn
 	{
+		[HarmonyPrefix, HarmonyPriority(Priority.First)]
+		public static void Prefix(ref PawnGenerationRequest request)
+    {
+			Settings.State state = new State(request.KindDef.race);
+			bool isGlobal = Settings.IsGlobal(state, GenderWindow.OverrideGender);
+			if (Settings.Int(State.GLOBAL, state, GenderWindow.GenderSlider, isGlobal) == 0)
+				request.FixedGender = Gender.Male;
+		}
+
 		[HarmonyPostfix, HarmonyPriority(Priority.Last)]
 		public static void Patch(Pawn __result, PawnGenerationRequest request)
 		{
