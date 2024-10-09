@@ -612,7 +612,7 @@ namespace RW_CustomPawnGeneration
 	{
 		[HarmonyPrefix, HarmonyPriority(Priority.First)]
 		public static void Prefix(ref PawnGenerationRequest request)
-    {
+		{
 			Settings.State state = new State(request.KindDef.race);
 			bool isGlobal = Settings.IsGlobal(state, GenderWindow.OverrideGender);
 			int genderSlider = Settings.Int(State.GLOBAL, state, GenderWindow.GenderSlider, isGlobal);
