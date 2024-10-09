@@ -615,8 +615,11 @@ namespace RW_CustomPawnGeneration
     {
 			Settings.State state = new State(request.KindDef.race);
 			bool isGlobal = Settings.IsGlobal(state, GenderWindow.OverrideGender);
-			if (Settings.Int(State.GLOBAL, state, GenderWindow.GenderSlider, isGlobal) == 0)
+			int genderSlider = Settings.Int(State.GLOBAL, state, GenderWindow.GenderSlider, isGlobal);
+			if (genderSlider == 0)
 				request.FixedGender = Gender.Male;
+			else if (genderSlider == 100)
+				request.FixedGender = Gender.Female;
 		}
 
 		[HarmonyPostfix, HarmonyPriority(Priority.Last)]
