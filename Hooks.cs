@@ -290,7 +290,12 @@ namespace RW_CustomPawnGeneration
 					gender = Gender.Male;
 
 				if (pawn.gender != gender)
+				{
 					pawn.gender = gender;
+
+					if (Settings.Bool(global, state, GenderWindow.SetFixedGender))
+						request.FixedGender = gender;
+				}
 			}
 		}
 

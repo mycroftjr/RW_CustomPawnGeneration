@@ -22,6 +22,7 @@ namespace RW_CustomPawnGeneration
 			Settings.IntDefaults[AgeWindow.AgeTick] = 1;
 			Settings.IntDefaults[Settings.CustomAging] = 0;
 			Settings.IntDefaults[Settings.UngenderedParent] = 0;
+			Settings.IntDefaults[GenderWindow.SetFixedGender] = 1;
 
 			foreach (BodyTypeDef def in DefDatabase<BodyTypeDef>.AllDefs)
 				Settings.IntDefaults[def.defName] = 1;
