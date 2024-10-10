@@ -16,16 +16,15 @@ namespace RW_CustomPawnGeneration
 			"Enabling this will ignore it. " +
 			"May cause minor bugs (single fathers/mothers), " +
 			"but not game-breaking.";
-		public const string DESCRIPTION_SET_FIXED_GENDER =
+		public const string DESCRIPTION_MODIFY_AGGRESSIVELY =
 			"When enabled, " +
-			"'PawnGenerationRequest.FixedGender' is also changed " +
-			"whenever this mod changes the pawn's gender. " +
-			"Does nothing if the pawn already has the desired gender.";
+			"some errors caused by a change in gender will be ignored. " +
+			"For mod compatibility, it is recommended that this is enabled.";
 
 		public const string SEPARATE_GENDER = "Separate Gender Stats";
 		public const string OVERRIDE_GENDER = "Override Gender Frequency";
 		public const string UNFORCED_GENDER = "Override Forced Gender";
-		public const string SET_FIXED_GENDER = "Set Fixed Gender";
+		public const string MODIFY_AGGRESSIVELY = "Modify Aggressively";
 
 		public const string MALE = "Male";
 		public const string FEMALE = "Female";
@@ -33,7 +32,7 @@ namespace RW_CustomPawnGeneration
 		public const string SeparateGender = "SeparateGender";
 		public const string OverrideGender = "OverrideGender";
 		public const string UnforcedGender = "UnforcedGender";
-		public const string SetFixedGender = "SetFixedGender";
+		public const string ModifyAggressively = "ModifyAggressively";
 		public const string GenderSlider = "GenderSlider";
 
 		public override Vector2 InitialSize
@@ -55,7 +54,7 @@ namespace RW_CustomPawnGeneration
 				Tools.GBool(gui, state, SeparateGender, SEPARATE_GENDER, DESCRIPTION_SEPARATE_GENDER);
 				Tools.GBool(gui, state, UnforcedGender, UNFORCED_GENDER, DESCRIPTION_UNFORCED_GENDER);
 				Tools.GBool(gui, state, OverrideGender, OVERRIDE_GENDER, DESCRIPTION_OVERRIDE_GENDER);
-				Tools.GBool(gui, state, SetFixedGender, SET_FIXED_GENDER, DESCRIPTION_SET_FIXED_GENDER);
+				Tools.GBool(gui, state, ModifyAggressively, MODIFY_AGGRESSIVELY, DESCRIPTION_MODIFY_AGGRESSIVELY);
 
 				if (state.GBool(OverrideGender))
 				{

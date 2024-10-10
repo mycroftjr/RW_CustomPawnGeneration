@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using System.Collections.Generic;
+using System.Reflection;
 using Verse;
 
 namespace RW_CustomPawnGeneration
@@ -251,52 +252,19 @@ namespace RW_CustomPawnGeneration
 	{
 		public const long AGE = 3600000;
 
-		[HarmonyPriority(Priority.Last)]
+		[HarmonyPriority(Priority.First)]
 		[HarmonyPrefix]
 		public static void Prefix(Pawn pawn, PawnGenerationRequest request)
 		{
-			if (pawn == null)
+			Settings.GetStateMale(request.KindDef.race, out Settings.State global, out Settings.State state);
+
+			if (!Settings.Bool(global, state, GenderWindow.OverrideGender))
 				return;
 
-			if (!Patch_PawnGenerator_TryGenerateNewPawnInternal.pending.ContainsKey(request))
+			if (!Settings.Bool(global, state, GenderWindow.ModifyAggressively))
 				return;
 
-			if (Patch_PawnGenerator_TryGenerateNewPawnInternal.pending[request]++ > 50)
-			{
-				Log.Warning("[CustomPawnGeneration] Rolled for gender too many times! Another mod might be controlling it!");
-				return;
-			}
-
-			Settings.GetStateMale(pawn, out Settings.State global, out Settings.State state);
-
-			if (!pawn.RaceProps.hasGenders ||
-				!Settings.Bool(global, state, GenderWindow.OverrideGender))
-				return;
-
-			if (Settings.Bool(global, state, GenderWindow.UnforcedGender) ||
-				request.FixedGender == null)
-			{
-				bool isGlobal = Settings.IsGlobal(state, GenderWindow.OverrideGender);
-				int value = Settings.Int(global, state, GenderWindow.GenderSlider, isGlobal);
-				Gender gender;
-
-				if (value == 100)
-					gender = Gender.Female;
-				else if (value == 0)
-					gender = Gender.Male;
-				else if (Rand.Value < value / 100f)
-					gender = Gender.Female;
-				else
-					gender = Gender.Male;
-
-				if (pawn.gender != gender)
-				{
-					pawn.gender = gender;
-
-					if (Settings.Bool(global, state, GenderWindow.SetFixedGender))
-						request.FixedGender = gender;
-				}
-			}
+			Patch_PawnGenerator_TryGenerateNewPawnInternal.genderPending[request] = pawn;
 		}
 
 		[HarmonyPostfix]
@@ -492,30 +460,10 @@ namespace RW_CustomPawnGeneration
 		}
 	}
 
-	[HarmonyPatch(typeof(PawnGenerator), "TryGenerateNewPawnInternal")]
-	public static class Patch_PawnGenerator_TryGenerateNewPawnInternal
-	{
-		public static Dictionary<PawnGenerationRequest, ushort> pending = new Dictionary<PawnGenerationRequest, ushort>();
-
-		[HarmonyPriority(Priority.Last)]
-		[HarmonyPrefix]
-		public static void Prefix(PawnGenerationRequest request)
-		{
-			pending[request] = 0;
-		}
-
-		[HarmonyPriority(Priority.Last)]
-		[HarmonyPostfix]
-		public static void Postfix(PawnGenerationRequest request)
-		{
-			pending.Remove(request);
-		}
-	}
-
 	[HarmonyPatch(typeof(PawnGenerator), "GenerateTraits")]
 	public static class Patch_PawnGenerator_GenerateTraits
 	{
-		public static Dictionary<Pawn, ushort> pending = new Dictionary<Pawn, ushort>();
+		public static Dictionary<Pawn, ushort> traitsPending = new Dictionary<Pawn, ushort>();
 
 		[HarmonyPriority(Priority.Last)]
 		[HarmonyPrefix]
@@ -524,7 +472,7 @@ namespace RW_CustomPawnGeneration
 			if (pawn == null)
 				return;
 
-			pending[pawn] = 0;
+			traitsPending[pawn] = 0;
 		}
 
 		[HarmonyPriority(Priority.Last)]
@@ -534,7 +482,7 @@ namespace RW_CustomPawnGeneration
 			if (pawn == null)
 				return;
 
-			pending.Remove(pawn);
+			traitsPending.Remove(pawn);
 
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
 
@@ -578,7 +526,7 @@ namespace RW_CustomPawnGeneration
 			if (___pawn == null)
 				return true;
 
-			if (!Patch_PawnGenerator_GenerateTraits.pending.ContainsKey(___pawn))
+			if (!Patch_PawnGenerator_GenerateTraits.traitsPending.ContainsKey(___pawn))
 				return true;
 
 			Settings.GetState(___pawn, out Settings.State global, out Settings.State state);
@@ -586,23 +534,127 @@ namespace RW_CustomPawnGeneration
 			if (!Settings.Bool(global, state, TraitsWindow.OverrideTraits))
 				return true;
 
-			if (Patch_PawnGenerator_GenerateTraits.pending[___pawn] > MAX_STACK)
+			if (Patch_PawnGenerator_GenerateTraits.traitsPending[___pawn] > MAX_STACK)
 			{
 				Log.Warning("[CustomPawnGeneration] Rolled for traits too many times! Try not to block/force too many of them!");
-				Patch_PawnGenerator_GenerateTraits.pending.Remove(___pawn);
+				Patch_PawnGenerator_GenerateTraits.traitsPending.Remove(___pawn);
 				return true;
 			}
 
 			bool IsGlobal = Settings.IsGlobal(state, TraitsWindow.OverrideTraits);
 
-			Patch_PawnGenerator_GenerateTraits.pending[___pawn]++;
+			Patch_PawnGenerator_GenerateTraits.traitsPending[___pawn]++;
 			return Settings.Int(global, state, $"{TraitsWindow.Trait}|{trait.def.defName}|{trait.Degree}", IsGlobal) == 0;
+		}
+	}
+
+	[HarmonyPatch(typeof(PawnGenerator), "TryGenerateNewPawnInternal")]
+	public static class Patch_PawnGenerator_TryGenerateNewPawnInternal
+	{
+		public static Dictionary<PawnGenerationRequest, Pawn> genderPending = new Dictionary<PawnGenerationRequest, Pawn>();
+		public static HashSet<PawnGenerationRequest> genderChanges = new HashSet<PawnGenerationRequest>();
+
+		public static void DiscardGeneratedPawn(Pawn pawn)
+		{
+			typeof(PawnGenerator).GetMethod(
+				"DiscardGeneratedPawn",
+				BindingFlags.NonPublic
+			).Invoke(
+				null,
+				new object[] { pawn }
+			);
+		}
+
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPostfix]
+		public static void Postfix(ref PawnGenerationRequest request, ref Pawn __result, ref string error)
+		{
+			if (__result != null)
+				return;
+
+			if (!genderPending.ContainsKey(request))
+				return;
+
+			bool genderChanged = genderChanges.Contains(request);
+			Pawn pawn = genderPending[request];
+
+			genderPending.Remove(request);
+			genderChanges.Remove(request);
+
+
+			if (!genderChanged)
+			{
+				DiscardGeneratedPawn(pawn);
+				return;
+			}
+
+			if (error != "Generated pawn with disabled requiredWorkTags.")
+			{
+				DiscardGeneratedPawn(pawn);
+				return;
+			}
+
+			Log.Warning($"[CustomPawnGeneration] '{pawn.Name}' was generated with an error '{error}'!");
+
+			__result = pawn;
+			error = null;
+		}
+	}
+
+	[HarmonyPatch(typeof(PawnGenerator), "DiscardGeneratedPawn")]
+	public static class Patch_PawnGenerator_DiscardGeneratedPawn
+	{
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPrefix]
+		public static bool Prefix(Pawn pawn)
+		{
+			if (Patch_PawnGenerator_TryGenerateNewPawnInternal.genderPending.ContainsValue(pawn))
+				return false;
+
+			return true;
 		}
 	}
 
 	[HarmonyPatch(typeof(PawnGenerator), "GeneratePawn", typeof(PawnGenerationRequest))]
 	public static class Patch_PawnGenerator_GeneratePawn
 	{
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPrefix]
+		public static void Prefix(ref PawnGenerationRequest request)
+		{
+			if (!request.KindDef.RaceProps.hasGenders)
+				return;
+
+			Settings.GetStateMale(request.KindDef.race, out Settings.State global, out Settings.State state);
+
+			if (!Settings.Bool(global, state, GenderWindow.OverrideGender))
+				return;
+
+			if (!Settings.Bool(global, state, GenderWindow.UnforcedGender) &&
+				request.FixedGender != null)
+				return;
+
+			bool isGlobal = Settings.IsGlobal(state, GenderWindow.OverrideGender);
+			int value = Settings.Int(global, state, GenderWindow.GenderSlider, isGlobal);
+			Gender gender;
+
+			if (value == 100)
+				gender = Gender.Female;
+			else if (value == 0)
+				gender = Gender.Male;
+			else if (Rand.Value < value / 100f)
+				gender = Gender.Female;
+			else
+				gender = Gender.Male;
+
+			if (request.FixedGender == gender)
+				return;
+
+			request.FixedGender = gender;
+
+			Patch_PawnGenerator_TryGenerateNewPawnInternal.genderChanges.Add(request);
+		}
+
 		[HarmonyPostfix, HarmonyPriority(Priority.Last)]
 		public static void Patch(Pawn __result, PawnGenerationRequest request)
 		{
