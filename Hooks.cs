@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Verse;
 
@@ -247,6 +248,106 @@ namespace RW_CustomPawnGeneration
 		}
 	}
 
+	static class PawnChecker
+    {
+		public static Dictionary<Pawn, PawnGenerationRequest> map = new Dictionary<Pawn, PawnGenerationRequest>();
+		public static HashSet<PawnGenerationRequest> warned = new HashSet<PawnGenerationRequest>();
+		public static bool CheckPawn(Pawn pawn, PawnGenerationRequest request)
+		{
+			map[pawn] = request;
+			if (request.KindDef.requiredWorkTags != 0 && (pawn.CombinedDisabledWorkTags & request.KindDef.requiredWorkTags) != 0)
+			{
+				if (!warned.Contains(request))
+                {
+					warned.Add(request);
+					Log.Warning(pawn.CombinedDisabledWorkTags.ToString());
+					Log.Warning(request.KindDef.requiredWorkTags.ToString());
+					Log.Warning((pawn.CombinedDisabledWorkTags & request.KindDef.requiredWorkTags).ToString());
+					Log.Warning("Generated pawn with disabled requiredWorkTags.");
+				}
+				return false;
+			}
+			return true;
+		}
+		public static bool CheckPawn(Pawn pawn)
+        {
+			return CheckPawn(pawn, map[pawn]);
+        }
+	}
+
+	[HarmonyPatch(typeof(PawnBioAndNameGenerator), "GiveAppropriateBioAndNameTo")]
+	public static class Patch_PawnBioAndNameGenerator_GiveAppropriateBioAndNameTo
+    {
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPrefix]
+		public static void Prefix(Pawn pawn, FactionDef factionType, PawnGenerationRequest request, XenotypeDef xenotype)
+		{
+			if (!PawnChecker.CheckPawn(pawn))
+			{
+				Log.Warning(string.Join(",", pawn.story.AllBackstories));
+			}
+		}
+
+		[HarmonyPostfix]
+		public static void Postfix(Pawn pawn, FactionDef factionType, PawnGenerationRequest request, XenotypeDef xenotype)
+        {
+			if (!PawnChecker.CheckPawn(pawn))
+			{
+				Log.Warning(string.Join(",", pawn.story.AllBackstories));
+			}
+		}
+    }
+
+	[HarmonyPatch(typeof(PawnBioAndNameGenerator), "TryGiveSolidBioTo")]
+	public static class Patch_PawnBioAndNameGenerator_TryGiveSolidBioTo
+	{
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPrefix]
+		public static void Prefix(Pawn pawn, string requiredLastName, List<BackstoryCategoryFilter> backstoryCategories)
+		{
+			if (!PawnChecker.CheckPawn(pawn))
+			{
+				Log.Warning(string.Join(",", pawn.story.AllBackstories));
+				Log.Warning(string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
+			}
+		}
+
+		[HarmonyPostfix]
+		public static void Postfix(Pawn pawn, string requiredLastName, List<BackstoryCategoryFilter> backstoryCategories)
+		{
+			if (!PawnChecker.CheckPawn(pawn))
+			{
+				Log.Warning(string.Join(",", pawn.story.AllBackstories));
+				Log.Warning(string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(PawnBioAndNameGenerator), "GiveShuffledBioTo")]
+	public static class Patch_PawnBioAndNameGenerator_GiveShuffledBioTo
+	{
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPrefix]
+		public static void Prefix(Pawn pawn, FactionDef factionType, string requiredLastName, List<BackstoryCategoryFilter> backstoryCategories, bool forceNoBackstory, bool forceNoNick, XenotypeDef xenotype, bool onlyForcedBackstories)
+		{
+			if (!PawnChecker.CheckPawn(pawn))
+			{
+				Log.Warning(string.Join(",", pawn.story.AllBackstories));
+				Log.Warning(string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
+			}
+		}
+
+		[HarmonyPostfix]
+		public static void Postfix(Pawn pawn, FactionDef factionType, string requiredLastName, List<BackstoryCategoryFilter> backstoryCategories, bool forceNoBackstory, bool forceNoNick, XenotypeDef xenotype, bool onlyForcedBackstories)
+		{
+			if (!PawnChecker.CheckPawn(pawn))
+			{
+				Log.Warning(string.Join(",", pawn.story.AllBackstories));
+				Log.Warning(string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
+			}
+		}
+	}
+
 	[HarmonyPatch(typeof(PawnGenerator), "GenerateRandomAge")]
 	public static class Patch_PawnGenerator_GenerateRandomAge
 	{
@@ -256,6 +357,8 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static void Prefix(Pawn pawn, PawnGenerationRequest request)
 		{
+			PawnChecker.CheckPawn(pawn, request);
+
 			Settings.GetStateMale(request.KindDef.race, out Settings.State global, out Settings.State state);
 
 			if (!Settings.Bool(global, state, GenderWindow.OverrideGender))
@@ -346,6 +449,8 @@ namespace RW_CustomPawnGeneration
 		{
 			if (pawn == null)
 				return;
+
+			PawnChecker.CheckPawn(pawn, request);
 
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
 
@@ -484,6 +589,8 @@ namespace RW_CustomPawnGeneration
 
 			traitsPending.Remove(pawn);
 
+			PawnChecker.CheckPawn(pawn, request);
+
 			Settings.GetState(pawn, out Settings.State global, out Settings.State state);
 
 			bool OverrideTraits = Settings.Bool(global, state, TraitsWindow.OverrideTraits);
@@ -580,7 +687,6 @@ namespace RW_CustomPawnGeneration
 
 			genderPending.Remove(request);
 			genderChanges.Remove(request);
-
 
 			if (!genderChanged)
 			{
