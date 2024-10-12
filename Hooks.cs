@@ -20,7 +20,11 @@ namespace RW_CustomPawnGeneration
 			return true;
 		}
 	}*/
-
+	public static class Test
+    {
+		public const bool TEST = true;
+    }
+	
 	[HarmonyPatch(typeof(ParentRelationUtility), "SetMother")]
 	public static class ParentRelationUtility_SetMother
 	{
@@ -37,14 +41,14 @@ namespace RW_CustomPawnGeneration
 			// Ignore limitations of being a mother (gender.)
 
 			if (newMother == null)
-				return false;
+				return Test.TEST;
 
 			if (newMother == pawn.GetMother())
-				return false;
+				return Test.TEST;
 
 			pawn.relations.AddDirectRelation(PawnRelationDefOf.Parent, newMother);
 
-			return false;
+			return Test.TEST;
 		}
 	}
 
@@ -64,14 +68,14 @@ namespace RW_CustomPawnGeneration
 			// Ignore limitations of being a father (gender.)
 
 			if (newFather == null)
-				return false;
+				return Test.TEST;
 
 			if (newFather == pawn.GetFather())
-				return false;
+				return Test.TEST;
 
 			pawn.relations.AddDirectRelation(PawnRelationDefOf.Parent, newFather);
 
-			return false;
+			return Test.TEST;
 		}
 	}
 
@@ -100,10 +104,10 @@ namespace RW_CustomPawnGeneration
 				return true;
 
 			if (!pawn.RaceProps.IsFlesh)
-				return false;
+				return Test.TEST;
 
 			if (pawn.relations == null)
-				return false;
+				return Test.TEST;
 
 
 			bool has_mother = false;
@@ -129,7 +133,7 @@ namespace RW_CustomPawnGeneration
 				break;
 			}
 
-			return false;
+			return Test.TEST;
 		}
 	}
 
@@ -158,10 +162,10 @@ namespace RW_CustomPawnGeneration
 				return true;
 
 			if (!pawn.RaceProps.IsFlesh)
-				return false;
+				return Test.TEST;
 
 			if (pawn.relations == null)
-				return false;
+				return Test.TEST;
 
 
 			bool has_father = false;
@@ -187,7 +191,7 @@ namespace RW_CustomPawnGeneration
 				break;
 			}
 
-			return false;
+			return Test.TEST;
 		}
 	}
 
@@ -251,22 +255,35 @@ namespace RW_CustomPawnGeneration
 	static class PawnChecker
     {
 		public static Dictionary<Pawn, PawnGenerationRequest> map = new Dictionary<Pawn, PawnGenerationRequest>();
-		public static HashSet<PawnGenerationRequest> warned = new HashSet<PawnGenerationRequest>();
+		public static Dictionary<PawnGenerationRequest, Pawn> warned = new Dictionary<PawnGenerationRequest, Pawn>();
+		private static int _counter = 0;
+		public static int Counter
+        {
+			get
+            {
+				return _counter++;
+            }
+        }
 		public static bool CheckPawn(Pawn pawn, PawnGenerationRequest request)
 		{
-			map[pawn] = request;
-			if (request.KindDef.requiredWorkTags != 0 && (pawn.CombinedDisabledWorkTags & request.KindDef.requiredWorkTags) != 0)
+			if (pawn != null)
+				map[pawn] = request;
+			if (pawn != null && request.KindDef.requiredWorkTags != 0 && (pawn.CombinedDisabledWorkTags & request.KindDef.requiredWorkTags) != 0)
 			{
-				if (!warned.Contains(request))
+				if (!warned.ContainsKey(request))
                 {
-					warned.Add(request);
-					Log.Warning(pawn.CombinedDisabledWorkTags.ToString());
-					Log.Warning(request.KindDef.requiredWorkTags.ToString());
-					Log.Warning((pawn.CombinedDisabledWorkTags & request.KindDef.requiredWorkTags).ToString());
-					Log.Warning("Generated pawn with disabled requiredWorkTags.");
+					warned.Add(request, pawn);
+					Log.Warning($"{Counter} Generated pawn with disabled requiredWorkTags {request.GetHashCode()}: (({pawn.CombinedDisabledWorkTags}) & ({request.KindDef.requiredWorkTags}) = " +
+						$"{pawn.CombinedDisabledWorkTags & request.KindDef.requiredWorkTags})\n{pawn} ({pawn.Label}, {pawn.NameFullColored}), {request}");
 				}
 				return false;
-			}
+			} else if (warned.ContainsKey(request))
+            {
+				string pawnStr = "null";
+				if (pawn != null)
+					pawnStr = $"{pawn} ({pawn.Label}, {pawn.NameFullColored})";
+				Log.Message($"{Counter} repeat request {request.GetHashCode()}: {pawnStr}, {request}");
+            }
 			return true;
 		}
 		public static bool CheckPawn(Pawn pawn)
@@ -282,18 +299,18 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static void Prefix(Pawn pawn, FactionDef factionType, PawnGenerationRequest request, XenotypeDef xenotype)
 		{
-			if (!PawnChecker.CheckPawn(pawn))
+			if (!PawnChecker.CheckPawn(pawn, request))
 			{
-				Log.Warning(string.Join(",", pawn.story.AllBackstories));
+				Log.Warning($"{PawnChecker.Counter} {pawn} ({pawn.Label}, {pawn.NameFullColored}): {string.Join(",", pawn.story.AllBackstories)}");
 			}
 		}
 
 		[HarmonyPostfix]
 		public static void Postfix(Pawn pawn, FactionDef factionType, PawnGenerationRequest request, XenotypeDef xenotype)
         {
-			if (!PawnChecker.CheckPawn(pawn))
+			if (!PawnChecker.CheckPawn(pawn, request))
 			{
-				Log.Warning(string.Join(",", pawn.story.AllBackstories));
+				Log.Warning($"{PawnChecker.Counter} {pawn} ({pawn.Label}, {pawn.NameFullColored}): {string.Join(",", pawn.story.AllBackstories)}");
 			}
 		}
     }
@@ -307,8 +324,8 @@ namespace RW_CustomPawnGeneration
 		{
 			if (!PawnChecker.CheckPawn(pawn))
 			{
-				Log.Warning(string.Join(",", pawn.story.AllBackstories));
-				Log.Warning(string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
+				Log.Warning($"{PawnChecker.Counter} {pawn} ({pawn.Label}, {pawn.NameFullColored}): {string.Join(",", pawn.story.AllBackstories)}\n" +
+					string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
 			}
 		}
 
@@ -317,8 +334,8 @@ namespace RW_CustomPawnGeneration
 		{
 			if (!PawnChecker.CheckPawn(pawn))
 			{
-				Log.Warning(string.Join(",", pawn.story.AllBackstories));
-				Log.Warning(string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
+				Log.Warning($"{PawnChecker.Counter} {pawn} ({pawn.Label}, {pawn.NameFullColored}): {string.Join(",", pawn.story.AllBackstories)}\n" +
+					string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
 			}
 		}
 	}
@@ -332,8 +349,8 @@ namespace RW_CustomPawnGeneration
 		{
 			if (!PawnChecker.CheckPawn(pawn))
 			{
-				Log.Warning(string.Join(",", pawn.story.AllBackstories));
-				Log.Warning(string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
+				Log.Warning($"{PawnChecker.Counter} {pawn} ({pawn.Label}, {pawn.NameFullColored}): {string.Join(",", pawn.story.AllBackstories)}\n" +
+					string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
 			}
 		}
 
@@ -342,8 +359,8 @@ namespace RW_CustomPawnGeneration
 		{
 			if (!PawnChecker.CheckPawn(pawn))
 			{
-				Log.Warning(string.Join(",", pawn.story.AllBackstories));
-				Log.Warning(string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
+				Log.Warning($"{PawnChecker.Counter} {pawn} ({pawn.Label}, {pawn.NameFullColored}): {string.Join(",", pawn.story.AllBackstories)}\n" +
+					string.Join(",", backstoryCategories.Select(b => "categories: " + string.Join(",", b.categories ?? new List<string>()) + ", exclude: " + string.Join(",", b.exclude ?? new List<string>()))));
 			}
 		}
 	}
@@ -673,12 +690,26 @@ namespace RW_CustomPawnGeneration
 		}
 
 		[HarmonyPriority(Priority.First)]
+		[HarmonyPrefix]
+		public static void Prefix(ref PawnGenerationRequest request, ref Pawn __result, ref string error)
+        {
+			if (error != null && error != "")
+				Log.Warning(error);
+			PawnChecker.CheckPawn(__result, request);
+        }
+
+		[HarmonyPriority(Priority.First)]
 		[HarmonyPostfix]
 		public static void Postfix(ref PawnGenerationRequest request, ref Pawn __result, ref string error)
 		{
 			if (__result != null)
 				return;
 
+			if (error != null && error != "")
+				Log.Warning(error);
+			PawnChecker.CheckPawn(__result, request);
+
+			/*
 			if (!genderPending.ContainsKey(request))
 				return;
 
@@ -700,10 +731,11 @@ namespace RW_CustomPawnGeneration
 				return;
 			}
 
-			Log.Warning($"[CustomPawnGeneration] '{pawn.Name}' was generated with an error '{error}'!");
+			Log.Warning($"[CustomPawnGeneration] '{pawn.Name}' was generated with an error '{error}'! Request: {request}");
 
 			__result = pawn;
 			error = null;
+			*/
 		}
 	}
 
@@ -715,7 +747,7 @@ namespace RW_CustomPawnGeneration
 		public static bool Prefix(Pawn pawn)
 		{
 			if (Patch_PawnGenerator_TryGenerateNewPawnInternal.genderPending.ContainsValue(pawn))
-				return false;
+				return Test.TEST;
 
 			return true;
 		}
@@ -784,6 +816,11 @@ namespace RW_CustomPawnGeneration
 						__result.health.AddHediff(def, part);
 				}
 			}
+
+			if (__result.gender != Gender.Male)
+            {
+				Log.Warning($"Non-male {__result.Label} ({__result.NameFullColored}): {__result.gender}");
+            }
 		}
 	}
 
