@@ -554,17 +554,6 @@ namespace RW_CustomPawnGeneration
 		public static Dictionary<PawnGenerationRequest, Pawn> genderPending = new Dictionary<PawnGenerationRequest, Pawn>();
 		public static HashSet<PawnGenerationRequest> genderChanges = new HashSet<PawnGenerationRequest>();
 
-		public static void DiscardGeneratedPawn(Pawn pawn)
-		{
-			typeof(PawnGenerator).GetMethod(
-				"DiscardGeneratedPawn",
-				BindingFlags.NonPublic
-			).Invoke(
-				null,
-				new object[] { pawn }
-			);
-		}
-
 		[HarmonyPriority(Priority.First)]
 		[HarmonyPostfix]
 		public static void Postfix(ref PawnGenerationRequest request, ref Pawn __result, ref string error)
@@ -583,16 +572,10 @@ namespace RW_CustomPawnGeneration
 
 
 			if (!genderChanged)
-			{
-				DiscardGeneratedPawn(pawn);
 				return;
-			}
 
-			if (error != "Generated pawn with disabled requiredWorkTags.")
-			{
-				DiscardGeneratedPawn(pawn);
+			if (error != "Generated pawn with disabled requiredWorkTags." && error != "Generated pawn incapable of violence.")
 				return;
-			}
 
 			Log.Warning($"[CustomPawnGeneration] '{pawn.Name}' was generated with an error '{error}'!");
 
@@ -622,6 +605,9 @@ namespace RW_CustomPawnGeneration
 		[HarmonyPrefix]
 		public static void Prefix(ref PawnGenerationRequest request)
 		{
+			if (request.KindDef.requiredWorkTags.HasFlag(WorkTags.Violent))
+				request.MustBeCapableOfViolence = true;
+
 			if (!request.KindDef.RaceProps.hasGenders)
 				return;
 
