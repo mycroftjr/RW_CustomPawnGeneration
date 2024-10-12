@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Verse;
 
@@ -337,6 +338,130 @@ namespace RW_CustomPawnGeneration
 		}
 	}
 
+	[HarmonyPatch(typeof(PawnBioAndNameGenerator), "IsBioUseable")]
+	public static class Patch_PawnBioAndNameGenerator_IsBioUseable
+	{
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyPostfix]
+		public static void Postfix(PawnBio bio, BackstoryCategoryFilter categoryFilter, PawnKindDef kind, Gender gender, string requiredLastName, ref bool __result)
+		{
+			Pawn pawn = Patch_PawnBioAndNameGenerator_TryGiveSolidBioTo.pawnDict[kind];
+			PawnGenerationRequest request = Patch_PawnBioAndNameGenerator_GiveAppropriateBioAndNameTo.requestDict[pawn];
+			WorkTags backstoryDisables = bio.childhood.workDisables | bio.adulthood.workDisables;
+			WorkTags needed = pawn.kindDef.requiredWorkTags | request.KindDef.requiredWorkTags;
+			if (needed != 0 && (backstoryDisables & needed) != 0)
+			{
+				string msg = $"Disqualifying {bio} for {pawn} because ({backstoryDisables}) and ({needed}) have overlap: {backstoryDisables & needed}";
+				if (bio.name.Nick == "Darklight")
+					msg = " --> " + msg;
+				Log.Message(msg);
+				__result = false;
+			}
+			else if (bio.name.Nick == "Darklight")
+			{
+				string msg = $"Approving {bio} for {pawn} because ({backstoryDisables}) and ({needed}) have no overlap: {backstoryDisables & needed}";
+				if (bio.name.Nick == "Darklight")
+					Log.Error(msg);
+				else if (needed != 0)
+					Log.Message(msg);
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(PawnBioAndNameGenerator), "TryGetRandomUnusedSolidBioFor")]
+	public static class Patch_PawnBioAndNameGenerator_TryGetRandomUnusedSolidBioFor
+	{
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyPostfix]
+		public static void Postfix(List<BackstoryCategoryFilter> backstoryCategories, PawnKindDef kind, Gender gender, string requiredLastName, ref PawnBio result, ref bool __result)
+		{
+			if (result != null)
+			{
+				Pawn pawn = Patch_PawnBioAndNameGenerator_TryGiveSolidBioTo.pawnDict[kind];
+				PawnGenerationRequest request = Patch_PawnBioAndNameGenerator_GiveAppropriateBioAndNameTo.requestDict[pawn];
+				WorkTags backstoryDisables = result.childhood.workDisables | result.adulthood.workDisables;
+				WorkTags needed = pawn.kindDef.requiredWorkTags | request.KindDef.requiredWorkTags;
+				if ((backstoryDisables & needed) != 0)
+				{
+					Log.Warning($"Tried to give bad bio {result} to {pawn}; ({backstoryDisables}) and ({needed}) have overlap: {backstoryDisables & needed}");
+					__result = false;
+				}
+				else if (needed != 0 && result.name.Nick == "Darklight")
+					Log.Error($"Giving bio {result} to {pawn}; ({backstoryDisables}) and ({needed}) have no overlap: {backstoryDisables & needed}");
+			}
+			if (!__result)
+				result = null;
+		}
+	}
+
+	[HarmonyPatch(typeof(PawnBioAndNameGenerator), "TryGiveSolidBioTo")]
+	public static class Patch_PawnBioAndNameGenerator_TryGiveSolidBioTo
+	{
+		public static Dictionary<PawnKindDef, Pawn> pawnDict = new Dictionary<PawnKindDef, Pawn>();
+
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyPrefix]
+		public static void Prefix(Pawn pawn, string requiredLastName, List<BackstoryCategoryFilter> backstoryCategories, ref bool __result)
+		{
+			pawnDict[pawn.kindDef] = pawn;
+		}
+
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPostfix]
+		public static void Postfix(Pawn pawn, string requiredLastName, List<BackstoryCategoryFilter> backstoryCategories, ref bool __result)
+		{
+			// PawnGenerationRequest request = Patch_PawnBioAndNameGenerator_GiveAppropriateBioAndNameTo.requestDict[pawn];
+			if ((pawn.CombinedDisabledWorkTags & pawn.kindDef.requiredWorkTags) != 0)
+			{
+				throw new System.Exception($"Gave bad bio to {pawn.Name}: ({pawn.CombinedDisabledWorkTags}) & ({pawn.kindDef.requiredWorkTags}) = {pawn.CombinedDisabledWorkTags & pawn.kindDef.requiredWorkTags}");
+			}
+			pawnDict.Remove(pawn.kindDef);
+		}
+	}
+
+	[HarmonyPatch(typeof(PawnBioAndNameGenerator), "GiveShuffledBioTo")]
+	public static class Patch_PawnBioAndNameGenerator_GiveShuffledBioTo
+	{
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPrefix]
+		public static void Prefix(Pawn pawn, FactionDef factionType, string requiredLastName, List<BackstoryCategoryFilter> backstoryCategories, bool forceNoBackstory, bool forceNoNick, XenotypeDef xenotype, bool onlyForcedBackstories)
+		{
+			if ((pawn.CombinedDisabledWorkTags & pawn.kindDef.requiredWorkTags) != 0)
+			{
+				Log.Warning($"Gave bad bio to {pawn.Name}: ({pawn.CombinedDisabledWorkTags}) & ({pawn.kindDef.requiredWorkTags}) = {pawn.CombinedDisabledWorkTags & pawn.kindDef.requiredWorkTags}");
+			}
+		}
+
+		[HarmonyPostfix]
+		public static void Postfix(Pawn pawn, FactionDef factionType, string requiredLastName, List<BackstoryCategoryFilter> backstoryCategories, bool forceNoBackstory, bool forceNoNick, XenotypeDef xenotype, bool onlyForcedBackstories)
+		{
+			if ((pawn.CombinedDisabledWorkTags & pawn.kindDef.requiredWorkTags) != 0)
+			{
+				Log.Warning($"Gave bad bio to {pawn.Name}: ({pawn.CombinedDisabledWorkTags}) & ({pawn.kindDef.requiredWorkTags}) = {pawn.CombinedDisabledWorkTags & pawn.kindDef.requiredWorkTags}");
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(PawnBioAndNameGenerator), "GiveAppropriateBioAndNameTo")]
+	public static class Patch_PawnBioAndNameGenerator_GiveAppropriateBioAndNameTo
+	{
+		public static Dictionary<Pawn, PawnGenerationRequest> requestDict = new Dictionary<Pawn, PawnGenerationRequest>();
+
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyPrefix]
+		public static void Prefix(Pawn pawn, FactionDef factionType, PawnGenerationRequest request, XenotypeDef xenotype)
+		{
+			requestDict[pawn] = request;
+		}
+
+		[HarmonyPriority(Priority.First)]
+		[HarmonyPostfix]
+		public static void Postfix(Pawn pawn, FactionDef factionType, PawnGenerationRequest request, XenotypeDef xenotype)
+		{
+			requestDict.Remove(pawn);
+		}
+	}
+
 	[HarmonyPatch(typeof(PawnGenerator), "GenerateBodyType")]
 	public static class Patch_PawnGenerator_GenerateBodyType
 	{
@@ -554,17 +679,6 @@ namespace RW_CustomPawnGeneration
 		public static Dictionary<PawnGenerationRequest, Pawn> genderPending = new Dictionary<PawnGenerationRequest, Pawn>();
 		public static HashSet<PawnGenerationRequest> genderChanges = new HashSet<PawnGenerationRequest>();
 
-		public static void DiscardGeneratedPawn(Pawn pawn)
-		{
-			typeof(PawnGenerator).GetMethod(
-				"DiscardGeneratedPawn",
-				BindingFlags.NonPublic
-			).Invoke(
-				null,
-				new object[] { pawn }
-			);
-		}
-
 		[HarmonyPriority(Priority.First)]
 		[HarmonyPostfix]
 		public static void Postfix(ref PawnGenerationRequest request, ref Pawn __result, ref string error)
@@ -584,13 +698,18 @@ namespace RW_CustomPawnGeneration
 
 			if (!genderChanged)
 			{
-				DiscardGeneratedPawn(pawn);
 				return;
 			}
 
+			string workDisableReasons = string.Join(", ", DefDatabase<WorkTypeDef>.AllDefs
+				.Where(wt => (wt.workTags & pawn.CombinedDisabledWorkTags & pawn.kindDef.requiredWorkTags) != 0)
+				.SelectMany(wtd => pawn.GetReasonsForDisabledWorkType(wtd)));
+			Log.Warning($"[CustomPawnGeneration] '{pawn.Name}' was generated with an error '{error}'! ({workDisableReasons}), request {request}");
+
+			return;
+			/*
 			if (error != "Generated pawn with disabled requiredWorkTags.")
 			{
-				DiscardGeneratedPawn(pawn);
 				return;
 			}
 
@@ -598,6 +717,7 @@ namespace RW_CustomPawnGeneration
 
 			__result = pawn;
 			error = null;
+			*/
 		}
 	}
 
